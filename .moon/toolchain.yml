@@ -1,0 +1,5 @@
+node: {}
+unstable_go:
+  version: "1.24.5"
+python:
+  packageManager: "pip"
