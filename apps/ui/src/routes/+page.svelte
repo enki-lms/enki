@@ -1,11 +1,16 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
+	import { onMount } from "svelte";
 
 	function handleKeyDown(event: KeyboardEvent) {
 		if (event.shiftKey && event.key === "D") {
 			goto("/component-demos");
 		}
 	}
+
+	onMount(() => {
+		goto("/auth");
+	});
 </script>
 
 <svelte:window on:keydown={handleKeyDown} />
