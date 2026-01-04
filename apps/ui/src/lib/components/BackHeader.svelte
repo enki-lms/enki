@@ -1,5 +1,5 @@
 <script lang="ts">
-    import BackButton from "$lib/assets/components/BackButton.svelte";
+    import BackButton from "$lib/components/BackButton.svelte";
     import { goto } from "$app/navigation";
 
     export let href: string;

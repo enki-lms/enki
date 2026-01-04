@@ -1,7 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
-    import EyeIcon from "$lib/assets/components/icons/EyeIcon.svelte";
-    import EyeOffIcon from "$lib/assets/components/icons/EyeOffIcon.svelte";
+    import EyeIcon from "$lib/components/icons/EyeIcon.svelte";
+    import EyeOffIcon from "$lib/components/icons/EyeOffIcon.svelte";
 
     const dispatch = createEventDispatcher();
 

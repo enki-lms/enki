@@ -1,7 +1,7 @@
 <script lang="ts">
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import button from '$lib/assets/components/Button.svelte';
+	import button from '$lib/components/Button.svelte';
 	
 
 	let { children } = $props();

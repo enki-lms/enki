@@ -1,8 +1,8 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
-    import BackArrowIcon from "$lib/assets/components/icons/BackArrowIcon.svelte";
-    import ArrowButton from "$lib/assets/components/ArrowButton.svelte";
-    import ShareIcon from "$lib/assets/components/icons/ShareIcon.svelte";
+    import BackArrowIcon from "$lib/components/icons/BackArrowIcon.svelte";
+    import ArrowButton from "$lib/components/ArrowButton.svelte";
+    import ShareIcon from "$lib/components/icons/ShareIcon.svelte";
 
     export let backPath: string;
 </script>

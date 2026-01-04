@@ -1,5 +1,5 @@
 <script lang="ts">
-    import RightArrow from "$lib/assets/components/icons/RightArrowIcon.svelte";
+    import RightArrow from "$lib/components/icons/RightArrowIcon.svelte";
 
     export let color: "blue" = "blue";
     export let size: "sm" | "md" = "md";
