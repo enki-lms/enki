@@ -1,8 +1,8 @@
 <script lang="ts">
-    export let padding = "p-6";
-    export let shadow = true;
+    export let padding: string = "p-6";
+    export let shadow: boolean = true;
 </script>
 
-<div class="bg-blue-50 rounded-lg {padding} {shadow ? 'shadow-md' : ''} border border-slate-300 {$$props.class}">
+<div class="bg-white rounded-xl {padding} {shadow ? 'shadow-sm' : ''} border border-gray-200 {$$props.class || ''}">
     <slot />
 </div>

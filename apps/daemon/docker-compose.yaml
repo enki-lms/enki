@@ -1,5 +1,3 @@
-version: "3"
-
 services:
     db:
         image: postgres:latest
@@ -11,7 +9,7 @@ services:
         ports:
         - "5432:5432"
         volumes:
-        - db_data:/var/lib/postgresql/data
+        - db_data:/var/lib/postgresql
 
 volumes:
   db_data:

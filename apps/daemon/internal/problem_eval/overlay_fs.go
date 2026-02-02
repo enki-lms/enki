@@ -1,11 +1,13 @@
+//go:build linux
+// +build linux
+
 package problem_eval
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/moby/sys/mount"
+	"syscall"
 )
 
 // OverlayMount holds the paths for our overlay setup.
@@ -50,13 +52,12 @@ func (m *OverlayMount) Mount() error {
 		"lowerdir=%s,upperdir=%s,workdir=%s",
 		m.LowerDir, m.UpperDir, m.WorkDir,
 	)
-	// The library abstracts away the syscall complexity.
-	return mount.Mount("overlay", m.MergedDir, "overlay", opts)
+	return syscall.Mount("overlay", m.MergedDir, "overlay", 0, opts)
 }
 
 // Unmount unmounts and cleans up the directories.
 func (m *OverlayMount) Unmount() error {
-	if err := mount.Unmount(m.MergedDir); err != nil {
+	if err := syscall.Unmount(m.MergedDir, 0); err != nil {
 		return fmt.Errorf("failed to unmount %s: %w", m.MergedDir, err)
 	}
 	return os.RemoveAll(m.InstancePath)

@@ -1,7 +1,7 @@
 <script lang="ts">
-    export let src: any;
-    export let width = "80";
-    export let height = "80";
+    export let src: string;
+    export let width: string = "80";
+    export let height: string = "80";
 </script>
 
 <div class="rounded-full overflow-hidden border border-slate-300 p-1">
