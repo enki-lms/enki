@@ -1,0 +1,67 @@
+# Enki Daemon Configuration
+
+# OIDC Provider Settings
+oidc:
+  client_id: "bc15ccc6-7940-43ce-84b2-7887d4f1eb7d"
+  client_secret: "1947a15a77b7d09474b69f47a40b8b53c4745cf47b"
+  issuer_url: "https://fed-lab.aaiedu.hr"
+  redirect_url: "https://evaluator.petagimnazija.hr/auth/redirect"
+  scopes:
+    - openid
+    - profile
+    - email
+
+# Database Settings
+database:
+  host: localhost
+  port: 5432
+  user: enki_user
+  password: enki_password
+  dbname: enki_db
+  # Or use a full connection URL:
+  # url: postgres://user:password@host:5432/dbname
+
+# Server Settings
+server:
+  host: "0.0.0.0"
+  port: 8080
+  frontend_url: "http://localhost:5173/home"
+
+# Authentication & Authorization Settings
+auth:
+  # The role name that grants teacher/admin permissions for content management
+  teacher_role_name: "teacher"
+  # Emails of super admins who can manage across all institutions
+  admin_emails:
+    - "admin@example.com"
+  # Secret key for signing JWT tokens (generate a secure random string)
+  jwt_secret: "your-super-secret-jwt-key-change-in-production"
+
+# Sandbox Settings (for code execution)
+sandbox:
+  # Path to nsjail binary
+  nsjail_path: "/usr/bin/nsjail"
+  # Path to Python interpreter inside chroot
+  python_path: "/usr/bin/python3"
+  # Base filesystem for OverlayFS (create with debootstrap)
+  lower_dir: "/var/lib/enki/rootfs"
+  # Temporary directory for sandbox instances
+  temp_dir: "/tmp/enki-sandbox"
+  # Default timeout in milliseconds
+  timeout_ms: 5000
+  # Default memory limit in MB
+  memory_limit_mb: 128
+  unsafe: true
+
+# AI Assistant Settings (OAI-compatible API)
+ai:
+  # Enable AI assistant
+  enabled: true
+  # API base URL (OpenAI-compatible)
+  base_url: "https://openrouter.ai/api/v1"
+  # API key
+  api_key: "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"
+  # Model to use
+  model: "openai/gpt-5-mini"
+  # System prompt for the AI tutor
+  system_prompt: "You are a helpful programming tutor assisting students with computer science problems. Use Python. DO NOT USE ANY LATEX SYMBOLS FOR MATH EXPRESSIONS, THE RENDERING ISN'T SUPPORTED. Respond in the user's language, usually Croatian or English."

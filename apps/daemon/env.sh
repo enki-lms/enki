@@ -1,0 +1,5 @@
+export OIDC_ISSUER_URL="https://fed-lab.aaiedu.hr"
+export OIDC_CLIENT_ID="bc15ccc6-7940-43ce-84b2-7887d4f1eb7d"
+export OIDC_CLIENT_SECRET="1947a15a77b7d09474b69f47a40b8b53c4745cf47b"
+export OIDC_REDIRECT_URL="https://evaluator.petagimnazija.hr/auth/redirect"
+export OIDC_SCOPES="cn,sn,givenName,displayName,email,hrEduPersonAffiliation"

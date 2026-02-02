@@ -1,0 +1,17 @@
+version: "3"
+
+services:
+    db:
+        image: postgres:latest
+        container_name: enki_db
+        environment:
+          POSTGRES_USER: enki_user
+          POSTGRES_PASSWORD: enki_password
+          POSTGRES_DB: enki_db
+        ports:
+        - "5432:5432"
+        volumes:
+        - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:
