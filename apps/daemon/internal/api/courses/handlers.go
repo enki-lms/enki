@@ -9,6 +9,7 @@ import (
 	"github.com/enki/daemon/internal/db/sqlc/sqlc"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // Handler handles course-related API routes
@@ -35,6 +36,24 @@ func (h *Handler) ListCourses(c *gin.Context) {
 	}
 
 	courses, err := h.queries.ListCoursesByUser(c.Request.Context(), claims.UserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list courses"})
+		return
+	}
+
+	c.JSON(http.StatusOK, courses)
+}
+
+// ListTeacherCourses returns courses owned by the authenticated teacher
+// GET /api/courses/teaching
+func (h *Handler) ListTeacherCourses(c *gin.Context) {
+	claims, ok := auth.GetUserClaims(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	courses, err := h.queries.ListCoursesByOwner(c.Request.Context(), pgtype.Int8{Int64: claims.UserID, Valid: true})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list courses"})
 		return
@@ -79,7 +98,8 @@ func (h *Handler) GetCourse(c *gin.Context) {
 
 // CreateCourseRequest represents the request body for creating a course
 type CreateCourseRequest struct {
-	Name string `json:"name" binding:"required"`
+	Name    string `json:"name" binding:"required"`
+	Subject string `json:"subject" binding:"required"`
 }
 
 // CreateCourse creates a new course
@@ -100,7 +120,9 @@ func (h *Handler) CreateCourse(c *gin.Context) {
 	// Auto-set institution from the teacher's institution
 	course, err := h.queries.CreateCourse(c.Request.Context(), sqlc.CreateCourseParams{
 		Name:        req.Name,
+		Subject:     req.Subject,
 		Institution: claims.Institution,
+		OwnerID:     pgtype.Int8{Int64: claims.UserID, Valid: true},
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create course"})
@@ -112,7 +134,8 @@ func (h *Handler) CreateCourse(c *gin.Context) {
 
 // UpdateCourseRequest represents the request body for updating a course
 type UpdateCourseRequest struct {
-	Name string `json:"name" binding:"required"`
+	Name    string `json:"name" binding:"required"`
+	Subject string `json:"subject" binding:"required"`
 }
 
 // UpdateCourse updates a course
@@ -156,6 +179,7 @@ func (h *Handler) UpdateCourse(c *gin.Context) {
 	course, err := h.queries.UpdateCourse(c.Request.Context(), sqlc.UpdateCourseParams{
 		ID:          id,
 		Name:        req.Name,
+		Subject:     req.Subject,
 		Institution: existingCourse.Institution,
 	})
 	if err != nil {
@@ -212,6 +236,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, authMiddleware *auth.Middl
 	{
 		// Read operations - authenticated users
 		courses.GET("", authMiddleware.AuthRequired(), h.ListCourses)
+		courses.GET("/teaching", authMiddleware.AuthRequired(), authMiddleware.RequireTeacher(), h.ListTeacherCourses)
 		courses.GET("/:id", authMiddleware.AuthRequired(), h.GetCourse)
 
 		// Write operations - teachers only

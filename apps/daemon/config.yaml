@@ -10,6 +10,9 @@ oidc:
     - openid
     - profile
     - email
+    - hrEduPersonRole
+    - hrEduPersonAffiliation
+    - hrEduPersonHomeOrg
 
 # Database Settings
 database:

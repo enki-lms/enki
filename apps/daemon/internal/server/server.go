@@ -9,8 +9,12 @@ import (
 	aiapi "github.com/enki/daemon/internal/api/ai"
 	"github.com/enki/daemon/internal/api/courses"
 	"github.com/enki/daemon/internal/api/enrollments"
+	"github.com/enki/daemon/internal/api/exams"
 	"github.com/enki/daemon/internal/api/problemgroups"
 	"github.com/enki/daemon/internal/api/problems"
+	"github.com/enki/daemon/internal/api/quizgroups"
+	"github.com/enki/daemon/internal/api/quizproblems"
+	"github.com/enki/daemon/internal/api/quizsubmissions"
 	"github.com/enki/daemon/internal/api/submissions"
 	"github.com/enki/daemon/internal/api/testcases"
 	"github.com/enki/daemon/internal/api/users"
@@ -18,7 +22,9 @@ import (
 	"github.com/enki/daemon/internal/config"
 	"github.com/enki/daemon/internal/db"
 	"github.com/enki/daemon/internal/db/sqlc/sqlc"
+	"github.com/enki/daemon/internal/exam"
 	"github.com/enki/daemon/internal/problem_eval"
+	"github.com/enki/daemon/internal/websocket"
 	"github.com/gin-gonic/gin"
 )
 
@@ -61,6 +67,15 @@ func StartServer() error {
 		fmt.Printf("Warning: Code execution disabled: %v\n", err)
 	}
 
+	// Initialize WebSocket hub
+	wsHub := websocket.NewHub(queries)
+	go wsHub.Run()
+
+	// Initialize and start exam timer service
+	timerService := exam.NewTimerService(queries, wsHub)
+	timerService.Start()
+	defer timerService.Stop()
+
 	// Register auth routes
 	authHandler := auth.NewHandler(provider, queries, jwtManager, cfg.Server.FrontendURL)
 	authGroup := srv.Group("/auth")
@@ -101,6 +116,23 @@ func StartServer() error {
 		submissionHandler := submissions.NewHandler(queries, authMiddleware, executor)
 		submissionHandler.RegisterRoutes(api, authMiddleware)
 	}
+
+	// Quiz problem group routes
+	quizGroupHandler := quizgroups.NewHandler(queries, authMiddleware)
+	quizGroupHandler.RegisterRoutes(api, authMiddleware)
+
+	// Quiz problem routes
+	quizProblemHandler := quizproblems.NewHandler(queries, authMiddleware)
+	quizProblemHandler.RegisterRoutes(api, authMiddleware)
+
+	// Quiz submission routes
+	quizSubmissionHandler := quizsubmissions.NewHandler(queries, authMiddleware)
+	quizSubmissionHandler.RegisterRoutes(api, authMiddleware)
+
+	// Exam session routes
+	examHandler := exams.NewHandler(queries, authMiddleware, wsHub)
+	examHandler.RegisterRoutes(api, authMiddleware)
+	examHandler.RegisterWebSocketRoutes(srv, authMiddleware)
 
 	// AI routes (only if enabled)
 	aiClient := ai.NewClient(&cfg.AI)

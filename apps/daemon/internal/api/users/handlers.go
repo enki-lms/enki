@@ -43,6 +43,24 @@ func (h *Handler) ListUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
+// ListStudents returns students from the teacher's institution
+// GET /api/users/students
+func (h *Handler) ListStudents(c *gin.Context) {
+	claims, ok := auth.GetUserClaims(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	students, err := h.queries.ListStudentsByInstitution(c.Request.Context(), claims.Institution)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list students"})
+		return
+	}
+
+	c.JSON(http.StatusOK, students)
+}
+
 // GetUser returns a user by ID
 // GET /api/users/:id
 func (h *Handler) GetUser(c *gin.Context) {
@@ -183,6 +201,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, authMiddleware *auth.Middl
 	users.Use(authMiddleware.AuthRequired(), authMiddleware.RequireTeacher())
 	{
 		users.GET("", h.ListUsers)
+		users.GET("/students", h.ListStudents)
 		users.GET("/:id", h.GetUser)
 		users.PUT("/:id", h.UpdateUser)
 		users.DELETE("/:id", h.DeleteUser)

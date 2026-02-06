@@ -53,6 +53,138 @@ func (ns NullCompSciProblemType) Value() (driver.Value, error) {
 	return string(ns.CompSciProblemType), nil
 }
 
+type ExamSessionStatus string
+
+const (
+	ExamSessionStatusPending ExamSessionStatus = "pending"
+	ExamSessionStatusActive  ExamSessionStatus = "active"
+	ExamSessionStatusEnded   ExamSessionStatus = "ended"
+)
+
+func (e *ExamSessionStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ExamSessionStatus(s)
+	case string:
+		*e = ExamSessionStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ExamSessionStatus: %T", src)
+	}
+	return nil
+}
+
+type NullExamSessionStatus struct {
+	ExamSessionStatus ExamSessionStatus `json:"exam_session_status"`
+	Valid             bool              `json:"valid"` // Valid is true if ExamSessionStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullExamSessionStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ExamSessionStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ExamSessionStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullExamSessionStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ExamSessionStatus), nil
+}
+
+type ExamStudentStatus string
+
+const (
+	ExamStudentStatusAssigned     ExamStudentStatus = "assigned"
+	ExamStudentStatusActive       ExamStudentStatus = "active"
+	ExamStudentStatusSubmitted    ExamStudentStatus = "submitted"
+	ExamStudentStatusDiscontinued ExamStudentStatus = "discontinued"
+)
+
+func (e *ExamStudentStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ExamStudentStatus(s)
+	case string:
+		*e = ExamStudentStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ExamStudentStatus: %T", src)
+	}
+	return nil
+}
+
+type NullExamStudentStatus struct {
+	ExamStudentStatus ExamStudentStatus `json:"exam_student_status"`
+	Valid             bool              `json:"valid"` // Valid is true if ExamStudentStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullExamStudentStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ExamStudentStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ExamStudentStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullExamStudentStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ExamStudentStatus), nil
+}
+
+type QuizProblemType string
+
+const (
+	QuizProblemTypeOpenEnded QuizProblemType = "open_ended"
+	QuizProblemTypeTrueFalse QuizProblemType = "true_false"
+	QuizProblemTypeMcqSingle QuizProblemType = "mcq_single"
+	QuizProblemTypeMcqMulti  QuizProblemType = "mcq_multi"
+	QuizProblemTypeFillBlank QuizProblemType = "fill_blank"
+)
+
+func (e *QuizProblemType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = QuizProblemType(s)
+	case string:
+		*e = QuizProblemType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for QuizProblemType: %T", src)
+	}
+	return nil
+}
+
+type NullQuizProblemType struct {
+	QuizProblemType QuizProblemType `json:"quiz_problem_type"`
+	Valid           bool            `json:"valid"` // Valid is true if QuizProblemType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullQuizProblemType) Scan(value interface{}) error {
+	if value == nil {
+		ns.QuizProblemType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.QuizProblemType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullQuizProblemType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.QuizProblemType), nil
+}
+
 type UserRole string
 
 const (
@@ -146,7 +278,88 @@ type Course struct {
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
 	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 	Name        string           `json:"name"`
+	Subject     string           `json:"subject"`
 	Institution string           `json:"institution"`
+	OwnerID     pgtype.Int8      `json:"owner_id"`
+}
+
+type ExamSession struct {
+	ID               int64             `json:"id"`
+	CreatedAt        pgtype.Timestamp  `json:"created_at"`
+	UpdatedAt        pgtype.Timestamp  `json:"updated_at"`
+	ProblemGroupType string            `json:"problem_group_type"`
+	ProblemGroupID   int64             `json:"problem_group_id"`
+	OpenedBy         int64             `json:"opened_by"`
+	DurationMinutes  int32             `json:"duration_minutes"`
+	Status           ExamSessionStatus `json:"status"`
+	StartedAt        pgtype.Timestamp  `json:"started_at"`
+}
+
+type ExamSessionStudent struct {
+	ID            int64             `json:"id"`
+	CreatedAt     pgtype.Timestamp  `json:"created_at"`
+	SessionID     int64             `json:"session_id"`
+	UserID        int64             `json:"user_id"`
+	Status        ExamStudentStatus `json:"status"`
+	JoinedAt      pgtype.Timestamp  `json:"joined_at"`
+	EndsAt        pgtype.Timestamp  `json:"ends_at"`
+	SubmittedAt   pgtype.Timestamp  `json:"submitted_at"`
+	AutoSubmitted pgtype.Bool       `json:"auto_submitted"`
+}
+
+type ExamWorkInProgress struct {
+	ID               int64            `json:"id"`
+	SessionStudentID int64            `json:"session_student_id"`
+	ProblemID        int64            `json:"problem_id"`
+	ProblemType      string           `json:"problem_type"`
+	CurrentAnswer    string           `json:"current_answer"`
+	SavedAt          pgtype.Timestamp `json:"saved_at"`
+}
+
+type QuizProblem struct {
+	ID            int64            `json:"id"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+	GroupID       int64            `json:"group_id"`
+	ProblemType   QuizProblemType  `json:"problem_type"`
+	Name          string           `json:"name"`
+	Description   string           `json:"description"`
+	ProblemText   string           `json:"problem_text"`
+	Points        int32            `json:"points"`
+	CorrectAnswer pgtype.Text      `json:"correct_answer"`
+}
+
+type QuizProblemGroup struct {
+	ID          int64              `json:"id"`
+	CreatedAt   pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp   `json:"updated_at"`
+	Type        CompSciProblemType `json:"type"`
+	CourseID    int64              `json:"course_id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+}
+
+type QuizProblemOption struct {
+	ID           int64            `json:"id"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	ProblemID    int64            `json:"problem_id"`
+	OptionText   string           `json:"option_text"`
+	IsCorrect    bool             `json:"is_correct"`
+	DisplayOrder int32            `json:"display_order"`
+}
+
+type QuizSubmission struct {
+	ID              int64            `json:"id"`
+	CreatedAt       pgtype.Timestamp `json:"created_at"`
+	UserID          int64            `json:"user_id"`
+	ProblemID       int64            `json:"problem_id"`
+	AnswerText      pgtype.Text      `json:"answer_text"`
+	SelectedOptions []int64          `json:"selected_options"`
+	IsCorrect       pgtype.Bool      `json:"is_correct"`
+	Score           int32            `json:"score"`
+	MaxScore        int32            `json:"max_score"`
+	Feedback        pgtype.Text      `json:"feedback"`
 }
 
 type User struct {

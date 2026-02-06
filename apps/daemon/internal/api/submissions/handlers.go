@@ -13,6 +13,7 @@ import (
 	"github.com/enki/daemon/internal/problem_eval"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // Handler handles submission-related API routes
@@ -258,6 +259,38 @@ func (h *Handler) getProblemInstitution(ctx context.Context, problem sqlc.CompSc
 	return course.Institution, nil
 }
 
+// ListAllSubmissions returns all submissions for the current user
+// GET /api/submissions
+func (h *Handler) ListAllSubmissions(c *gin.Context) {
+	claims, ok := auth.GetUserClaims(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Parse optional limit parameter
+	var limitCount pgtype.Int4
+	if limitStr := c.Query("limit"); limitStr != "" {
+		limitVal, err := strconv.ParseInt(limitStr, 10, 32)
+		if err != nil || limitVal <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit parameter"})
+			return
+		}
+		limitCount = pgtype.Int4{Int32: int32(limitVal), Valid: true}
+	}
+
+	submissions, err := h.queries.ListCompSciSubmissionsByUserWithLimit(c.Request.Context(), sqlc.ListCompSciSubmissionsByUserWithLimitParams{
+		UserID:     claims.UserID,
+		LimitCount: limitCount,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get submissions"})
+		return
+	}
+
+	c.JSON(http.StatusOK, submissions)
+}
+
 // RegisterRoutes registers submission routes
 func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, authMiddleware *auth.Middleware) {
 	problemSubmissions := rg.Group("/problems/:id")
@@ -270,6 +303,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, authMiddleware *auth.Middl
 	submissions := rg.Group("/submissions")
 	submissions.Use(authMiddleware.AuthRequired())
 	{
+		submissions.GET("", h.ListAllSubmissions)
 		submissions.GET("/:id", h.GetSubmission)
 	}
 }

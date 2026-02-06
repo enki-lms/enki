@@ -142,13 +142,16 @@ func (h *Handler) RedirectHandler(c *gin.Context) {
 	}
 
 	// Extract displayName from list (first element)
-	displayName := extractFirstFromList(userClaims, "displayName")
-	if displayName == "" {
-		displayName = email // Fallback to email if displayName not available
+	fullName := extractFirstFromList(userClaims, "name")
+	if fullName == "" {
+		fullName = email // Fallback to email if displayName not available
 	}
 
 	// Extract hrEduPersonAffiliation from list (first element)
-	affiliation := extractFirstFromList(userClaims, "hrEduPersonAffiliation")
+	role := "student"
+	if extractFirstFromList(userClaims, "hrEduPersonAffiliation") == "djelatnik" {
+		role = "teacher"
+	}
 
 	// Check if user exists
 	ctx := c.Request.Context()
@@ -157,11 +160,10 @@ func (h *Handler) RedirectHandler(c *gin.Context) {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// User doesn't exist, create them
 			user, err = h.queries.CreateUser(ctx, sqlc.CreateUserParams{
-				Email:       email,
-				Institution: affiliation,
-				FullName:    displayName,
-				GivenName:   extractFirstFromList(userClaims, "givenName"),
-				Role:        sqlc.UserRoleStudent, // Default role
+				Email:     email,
+				FullName:  fullName,
+				GivenName: extractFirstFromList(userClaims, "givenName"),
+				Role:      sqlc.UserRole(role), // Default role
 			})
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{

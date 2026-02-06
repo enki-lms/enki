@@ -196,23 +196,295 @@ func (q *Queries) CreateCompSciTestCase(ctx context.Context, arg CreateCompSciTe
 }
 
 const createCourse = `-- name: CreateCourse :one
-INSERT INTO courses (name, institution) VALUES ($1, $2) RETURNING id, created_at, updated_at, name, institution
+INSERT INTO
+    courses (
+        name,
+        subject,
+        institution,
+        owner_id
+    )
+VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at, name, subject, institution, owner_id
 `
 
 type CreateCourseParams struct {
-	Name        string `json:"name"`
-	Institution string `json:"institution"`
+	Name        string      `json:"name"`
+	Subject     string      `json:"subject"`
+	Institution string      `json:"institution"`
+	OwnerID     pgtype.Int8 `json:"owner_id"`
 }
 
 func (q *Queries) CreateCourse(ctx context.Context, arg CreateCourseParams) (Course, error) {
-	row := q.db.QueryRow(ctx, createCourse, arg.Name, arg.Institution)
+	row := q.db.QueryRow(ctx, createCourse,
+		arg.Name,
+		arg.Subject,
+		arg.Institution,
+		arg.OwnerID,
+	)
 	var i Course
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Name,
+		&i.Subject,
 		&i.Institution,
+		&i.OwnerID,
+	)
+	return i, err
+}
+
+const createExamSession = `-- name: CreateExamSession :one
+INSERT INTO
+    exam_sessions (
+        problem_group_type,
+        problem_group_id,
+        opened_by,
+        duration_minutes
+    )
+VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at, problem_group_type, problem_group_id, opened_by, duration_minutes, status, started_at
+`
+
+type CreateExamSessionParams struct {
+	ProblemGroupType string `json:"problem_group_type"`
+	ProblemGroupID   int64  `json:"problem_group_id"`
+	OpenedBy         int64  `json:"opened_by"`
+	DurationMinutes  int32  `json:"duration_minutes"`
+}
+
+func (q *Queries) CreateExamSession(ctx context.Context, arg CreateExamSessionParams) (ExamSession, error) {
+	row := q.db.QueryRow(ctx, createExamSession,
+		arg.ProblemGroupType,
+		arg.ProblemGroupID,
+		arg.OpenedBy,
+		arg.DurationMinutes,
+	)
+	var i ExamSession
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ProblemGroupType,
+		&i.ProblemGroupID,
+		&i.OpenedBy,
+		&i.DurationMinutes,
+		&i.Status,
+		&i.StartedAt,
+	)
+	return i, err
+}
+
+const createExamSessionStudent = `-- name: CreateExamSessionStudent :one
+INSERT INTO
+    exam_session_students (session_id, user_id)
+VALUES ($1, $2) RETURNING id, created_at, session_id, user_id, status, joined_at, ends_at, submitted_at, auto_submitted
+`
+
+type CreateExamSessionStudentParams struct {
+	SessionID int64 `json:"session_id"`
+	UserID    int64 `json:"user_id"`
+}
+
+func (q *Queries) CreateExamSessionStudent(ctx context.Context, arg CreateExamSessionStudentParams) (ExamSessionStudent, error) {
+	row := q.db.QueryRow(ctx, createExamSessionStudent, arg.SessionID, arg.UserID)
+	var i ExamSessionStudent
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.SessionID,
+		&i.UserID,
+		&i.Status,
+		&i.JoinedAt,
+		&i.EndsAt,
+		&i.SubmittedAt,
+		&i.AutoSubmitted,
+	)
+	return i, err
+}
+
+const createQuizProblem = `-- name: CreateQuizProblem :one
+INSERT INTO
+    quiz_problems (
+        group_id,
+        problem_type,
+        name,
+        description,
+        problem_text,
+        points,
+        correct_answer
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, created_at, updated_at, group_id, problem_type, name, description, problem_text, points, correct_answer
+`
+
+type CreateQuizProblemParams struct {
+	GroupID       int64           `json:"group_id"`
+	ProblemType   QuizProblemType `json:"problem_type"`
+	Name          string          `json:"name"`
+	Description   string          `json:"description"`
+	ProblemText   string          `json:"problem_text"`
+	Points        int32           `json:"points"`
+	CorrectAnswer pgtype.Text     `json:"correct_answer"`
+}
+
+func (q *Queries) CreateQuizProblem(ctx context.Context, arg CreateQuizProblemParams) (QuizProblem, error) {
+	row := q.db.QueryRow(ctx, createQuizProblem,
+		arg.GroupID,
+		arg.ProblemType,
+		arg.Name,
+		arg.Description,
+		arg.ProblemText,
+		arg.Points,
+		arg.CorrectAnswer,
+	)
+	var i QuizProblem
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.GroupID,
+		&i.ProblemType,
+		&i.Name,
+		&i.Description,
+		&i.ProblemText,
+		&i.Points,
+		&i.CorrectAnswer,
+	)
+	return i, err
+}
+
+const createQuizProblemGroup = `-- name: CreateQuizProblemGroup :one
+INSERT INTO
+    quiz_problem_groups (
+        type,
+        course_id,
+        name,
+        description
+    )
+VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at, type, course_id, name, description
+`
+
+type CreateQuizProblemGroupParams struct {
+	Type        CompSciProblemType `json:"type"`
+	CourseID    int64              `json:"course_id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+}
+
+func (q *Queries) CreateQuizProblemGroup(ctx context.Context, arg CreateQuizProblemGroupParams) (QuizProblemGroup, error) {
+	row := q.db.QueryRow(ctx, createQuizProblemGroup,
+		arg.Type,
+		arg.CourseID,
+		arg.Name,
+		arg.Description,
+	)
+	var i QuizProblemGroup
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Type,
+		&i.CourseID,
+		&i.Name,
+		&i.Description,
+	)
+	return i, err
+}
+
+const createQuizProblemOption = `-- name: CreateQuizProblemOption :one
+INSERT INTO
+    quiz_problem_options (
+        problem_id,
+        option_text,
+        is_correct,
+        display_order
+    )
+VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at, problem_id, option_text, is_correct, display_order
+`
+
+type CreateQuizProblemOptionParams struct {
+	ProblemID    int64  `json:"problem_id"`
+	OptionText   string `json:"option_text"`
+	IsCorrect    bool   `json:"is_correct"`
+	DisplayOrder int32  `json:"display_order"`
+}
+
+func (q *Queries) CreateQuizProblemOption(ctx context.Context, arg CreateQuizProblemOptionParams) (QuizProblemOption, error) {
+	row := q.db.QueryRow(ctx, createQuizProblemOption,
+		arg.ProblemID,
+		arg.OptionText,
+		arg.IsCorrect,
+		arg.DisplayOrder,
+	)
+	var i QuizProblemOption
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ProblemID,
+		&i.OptionText,
+		&i.IsCorrect,
+		&i.DisplayOrder,
+	)
+	return i, err
+}
+
+const createQuizSubmission = `-- name: CreateQuizSubmission :one
+INSERT INTO
+    quiz_submissions (
+        user_id,
+        problem_id,
+        answer_text,
+        selected_options,
+        is_correct,
+        score,
+        max_score,
+        feedback
+    )
+VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8
+    ) RETURNING id, created_at, user_id, problem_id, answer_text, selected_options, is_correct, score, max_score, feedback
+`
+
+type CreateQuizSubmissionParams struct {
+	UserID          int64       `json:"user_id"`
+	ProblemID       int64       `json:"problem_id"`
+	AnswerText      pgtype.Text `json:"answer_text"`
+	SelectedOptions []int64     `json:"selected_options"`
+	IsCorrect       pgtype.Bool `json:"is_correct"`
+	Score           int32       `json:"score"`
+	MaxScore        int32       `json:"max_score"`
+	Feedback        pgtype.Text `json:"feedback"`
+}
+
+func (q *Queries) CreateQuizSubmission(ctx context.Context, arg CreateQuizSubmissionParams) (QuizSubmission, error) {
+	row := q.db.QueryRow(ctx, createQuizSubmission,
+		arg.UserID,
+		arg.ProblemID,
+		arg.AnswerText,
+		arg.SelectedOptions,
+		arg.IsCorrect,
+		arg.Score,
+		arg.MaxScore,
+		arg.Feedback,
+	)
+	var i QuizSubmission
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UserID,
+		&i.ProblemID,
+		&i.AnswerText,
+		&i.SelectedOptions,
+		&i.IsCorrect,
+		&i.Score,
+		&i.MaxScore,
+		&i.Feedback,
 	)
 	return i, err
 }
@@ -319,6 +591,60 @@ func (q *Queries) DeleteCourse(ctx context.Context, id int64) error {
 	return err
 }
 
+const deleteExamSession = `-- name: DeleteExamSession :exec
+DELETE FROM exam_sessions WHERE id = $1
+`
+
+func (q *Queries) DeleteExamSession(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteExamSession, id)
+	return err
+}
+
+const deleteExamWorkInProgressByStudent = `-- name: DeleteExamWorkInProgressByStudent :exec
+DELETE FROM exam_work_in_progress WHERE session_student_id = $1
+`
+
+func (q *Queries) DeleteExamWorkInProgressByStudent(ctx context.Context, sessionStudentID int64) error {
+	_, err := q.db.Exec(ctx, deleteExamWorkInProgressByStudent, sessionStudentID)
+	return err
+}
+
+const deleteQuizProblem = `-- name: DeleteQuizProblem :exec
+DELETE FROM quiz_problems WHERE id = $1
+`
+
+func (q *Queries) DeleteQuizProblem(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteQuizProblem, id)
+	return err
+}
+
+const deleteQuizProblemGroup = `-- name: DeleteQuizProblemGroup :exec
+DELETE FROM quiz_problem_groups WHERE id = $1
+`
+
+func (q *Queries) DeleteQuizProblemGroup(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteQuizProblemGroup, id)
+	return err
+}
+
+const deleteQuizProblemOption = `-- name: DeleteQuizProblemOption :exec
+DELETE FROM quiz_problem_options WHERE id = $1
+`
+
+func (q *Queries) DeleteQuizProblemOption(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteQuizProblemOption, id)
+	return err
+}
+
+const deleteQuizProblemOptionsByProblem = `-- name: DeleteQuizProblemOptionsByProblem :exec
+DELETE FROM quiz_problem_options WHERE problem_id = $1
+`
+
+func (q *Queries) DeleteQuizProblemOptionsByProblem(ctx context.Context, problemID int64) error {
+	_, err := q.db.Exec(ctx, deleteQuizProblemOptionsByProblem, problemID)
+	return err
+}
+
 const deleteUser = `-- name: DeleteUser :exec
 DELETE FROM users WHERE id = $1
 `
@@ -349,6 +675,57 @@ type DeleteUserCourseByUserAndCourseParams struct {
 func (q *Queries) DeleteUserCourseByUserAndCourse(ctx context.Context, arg DeleteUserCourseByUserAndCourseParams) error {
 	_, err := q.db.Exec(ctx, deleteUserCourseByUserAndCourse, arg.UserID, arg.CourseID)
 	return err
+}
+
+const discontinueExamSessionStudent = `-- name: DiscontinueExamSessionStudent :one
+UPDATE exam_session_students
+SET
+    status = 'discontinued'
+WHERE
+    id = $1 RETURNING id, created_at, session_id, user_id, status, joined_at, ends_at, submitted_at, auto_submitted
+`
+
+func (q *Queries) DiscontinueExamSessionStudent(ctx context.Context, id int64) (ExamSessionStudent, error) {
+	row := q.db.QueryRow(ctx, discontinueExamSessionStudent, id)
+	var i ExamSessionStudent
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.SessionID,
+		&i.UserID,
+		&i.Status,
+		&i.JoinedAt,
+		&i.EndsAt,
+		&i.SubmittedAt,
+		&i.AutoSubmitted,
+	)
+	return i, err
+}
+
+const endExamSession = `-- name: EndExamSession :one
+UPDATE exam_sessions
+SET
+    status = 'ended',
+    updated_at = CURRENT_TIMESTAMP
+WHERE
+    id = $1 RETURNING id, created_at, updated_at, problem_group_type, problem_group_id, opened_by, duration_minutes, status, started_at
+`
+
+func (q *Queries) EndExamSession(ctx context.Context, id int64) (ExamSession, error) {
+	row := q.db.QueryRow(ctx, endExamSession, id)
+	var i ExamSession
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ProblemGroupType,
+		&i.ProblemGroupID,
+		&i.OpenedBy,
+		&i.DurationMinutes,
+		&i.Status,
+		&i.StartedAt,
+	)
+	return i, err
 }
 
 const getCompSciProblem = `-- name: GetCompSciProblem :one
@@ -450,7 +827,7 @@ func (q *Queries) GetCompSciTestCase(ctx context.Context, id int64) (CompSciTest
 
 const getCourse = `-- name: GetCourse :one
 
-SELECT id, created_at, updated_at, name, institution FROM courses WHERE id = $1 LIMIT 1
+SELECT id, created_at, updated_at, name, subject, institution, owner_id FROM courses WHERE id = $1 LIMIT 1
 `
 
 // =====================
@@ -464,7 +841,222 @@ func (q *Queries) GetCourse(ctx context.Context, id int64) (Course, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Name,
+		&i.Subject,
 		&i.Institution,
+		&i.OwnerID,
+	)
+	return i, err
+}
+
+const getExamSession = `-- name: GetExamSession :one
+
+SELECT id, created_at, updated_at, problem_group_type, problem_group_id, opened_by, duration_minutes, status, started_at FROM exam_sessions WHERE id = $1 LIMIT 1
+`
+
+// =====================
+// Exam Sessions
+// =====================
+func (q *Queries) GetExamSession(ctx context.Context, id int64) (ExamSession, error) {
+	row := q.db.QueryRow(ctx, getExamSession, id)
+	var i ExamSession
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ProblemGroupType,
+		&i.ProblemGroupID,
+		&i.OpenedBy,
+		&i.DurationMinutes,
+		&i.Status,
+		&i.StartedAt,
+	)
+	return i, err
+}
+
+const getExamSessionStudent = `-- name: GetExamSessionStudent :one
+
+SELECT id, created_at, session_id, user_id, status, joined_at, ends_at, submitted_at, auto_submitted FROM exam_session_students WHERE id = $1 LIMIT 1
+`
+
+// =====================
+// Exam Session Students
+// =====================
+func (q *Queries) GetExamSessionStudent(ctx context.Context, id int64) (ExamSessionStudent, error) {
+	row := q.db.QueryRow(ctx, getExamSessionStudent, id)
+	var i ExamSessionStudent
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.SessionID,
+		&i.UserID,
+		&i.Status,
+		&i.JoinedAt,
+		&i.EndsAt,
+		&i.SubmittedAt,
+		&i.AutoSubmitted,
+	)
+	return i, err
+}
+
+const getExamSessionStudentBySessionAndUser = `-- name: GetExamSessionStudentBySessionAndUser :one
+SELECT id, created_at, session_id, user_id, status, joined_at, ends_at, submitted_at, auto_submitted
+FROM exam_session_students
+WHERE
+    session_id = $1
+    AND user_id = $2
+LIMIT 1
+`
+
+type GetExamSessionStudentBySessionAndUserParams struct {
+	SessionID int64 `json:"session_id"`
+	UserID    int64 `json:"user_id"`
+}
+
+func (q *Queries) GetExamSessionStudentBySessionAndUser(ctx context.Context, arg GetExamSessionStudentBySessionAndUserParams) (ExamSessionStudent, error) {
+	row := q.db.QueryRow(ctx, getExamSessionStudentBySessionAndUser, arg.SessionID, arg.UserID)
+	var i ExamSessionStudent
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.SessionID,
+		&i.UserID,
+		&i.Status,
+		&i.JoinedAt,
+		&i.EndsAt,
+		&i.SubmittedAt,
+		&i.AutoSubmitted,
+	)
+	return i, err
+}
+
+const getExamWorkInProgress = `-- name: GetExamWorkInProgress :one
+
+SELECT id, session_student_id, problem_id, problem_type, current_answer, saved_at
+FROM exam_work_in_progress
+WHERE
+    session_student_id = $1
+    AND problem_id = $2
+    AND problem_type = $3
+LIMIT 1
+`
+
+type GetExamWorkInProgressParams struct {
+	SessionStudentID int64  `json:"session_student_id"`
+	ProblemID        int64  `json:"problem_id"`
+	ProblemType      string `json:"problem_type"`
+}
+
+// =====================
+// Exam Work In Progress
+// =====================
+func (q *Queries) GetExamWorkInProgress(ctx context.Context, arg GetExamWorkInProgressParams) (ExamWorkInProgress, error) {
+	row := q.db.QueryRow(ctx, getExamWorkInProgress, arg.SessionStudentID, arg.ProblemID, arg.ProblemType)
+	var i ExamWorkInProgress
+	err := row.Scan(
+		&i.ID,
+		&i.SessionStudentID,
+		&i.ProblemID,
+		&i.ProblemType,
+		&i.CurrentAnswer,
+		&i.SavedAt,
+	)
+	return i, err
+}
+
+const getQuizProblem = `-- name: GetQuizProblem :one
+
+SELECT id, created_at, updated_at, group_id, problem_type, name, description, problem_text, points, correct_answer FROM quiz_problems WHERE id = $1 LIMIT 1
+`
+
+// =====================
+// Quiz Problems
+// =====================
+func (q *Queries) GetQuizProblem(ctx context.Context, id int64) (QuizProblem, error) {
+	row := q.db.QueryRow(ctx, getQuizProblem, id)
+	var i QuizProblem
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.GroupID,
+		&i.ProblemType,
+		&i.Name,
+		&i.Description,
+		&i.ProblemText,
+		&i.Points,
+		&i.CorrectAnswer,
+	)
+	return i, err
+}
+
+const getQuizProblemGroup = `-- name: GetQuizProblemGroup :one
+
+SELECT id, created_at, updated_at, type, course_id, name, description FROM quiz_problem_groups WHERE id = $1 LIMIT 1
+`
+
+// =====================
+// Quiz Problem Groups
+// =====================
+func (q *Queries) GetQuizProblemGroup(ctx context.Context, id int64) (QuizProblemGroup, error) {
+	row := q.db.QueryRow(ctx, getQuizProblemGroup, id)
+	var i QuizProblemGroup
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Type,
+		&i.CourseID,
+		&i.Name,
+		&i.Description,
+	)
+	return i, err
+}
+
+const getQuizProblemOption = `-- name: GetQuizProblemOption :one
+
+SELECT id, created_at, updated_at, problem_id, option_text, is_correct, display_order FROM quiz_problem_options WHERE id = $1 LIMIT 1
+`
+
+// =====================
+// Quiz Problem Options
+// =====================
+func (q *Queries) GetQuizProblemOption(ctx context.Context, id int64) (QuizProblemOption, error) {
+	row := q.db.QueryRow(ctx, getQuizProblemOption, id)
+	var i QuizProblemOption
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ProblemID,
+		&i.OptionText,
+		&i.IsCorrect,
+		&i.DisplayOrder,
+	)
+	return i, err
+}
+
+const getQuizSubmission = `-- name: GetQuizSubmission :one
+
+SELECT id, created_at, user_id, problem_id, answer_text, selected_options, is_correct, score, max_score, feedback FROM quiz_submissions WHERE id = $1 LIMIT 1
+`
+
+// =====================
+// Quiz Submissions
+// =====================
+func (q *Queries) GetQuizSubmission(ctx context.Context, id int64) (QuizSubmission, error) {
+	row := q.db.QueryRow(ctx, getQuizSubmission, id)
+	var i QuizSubmission
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UserID,
+		&i.ProblemID,
+		&i.AnswerText,
+		&i.SelectedOptions,
+		&i.IsCorrect,
+		&i.Score,
+		&i.MaxScore,
+		&i.Feedback,
 	)
 	return i, err
 }
@@ -532,6 +1124,118 @@ func (q *Queries) GetUserCourse(ctx context.Context, id int64) (UserCourse, erro
 		&i.CourseID,
 	)
 	return i, err
+}
+
+const joinExamSession = `-- name: JoinExamSession :one
+UPDATE exam_session_students
+SET
+    status = 'active',
+    joined_at = CURRENT_TIMESTAMP,
+    ends_at = $2
+WHERE
+    id = $1 RETURNING id, created_at, session_id, user_id, status, joined_at, ends_at, submitted_at, auto_submitted
+`
+
+type JoinExamSessionParams struct {
+	ID     int64            `json:"id"`
+	EndsAt pgtype.Timestamp `json:"ends_at"`
+}
+
+func (q *Queries) JoinExamSession(ctx context.Context, arg JoinExamSessionParams) (ExamSessionStudent, error) {
+	row := q.db.QueryRow(ctx, joinExamSession, arg.ID, arg.EndsAt)
+	var i ExamSessionStudent
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.SessionID,
+		&i.UserID,
+		&i.Status,
+		&i.JoinedAt,
+		&i.EndsAt,
+		&i.SubmittedAt,
+		&i.AutoSubmitted,
+	)
+	return i, err
+}
+
+const listActiveExamSessions = `-- name: ListActiveExamSessions :many
+SELECT id, created_at, updated_at, problem_group_type, problem_group_id, opened_by, duration_minutes, status, started_at
+FROM exam_sessions
+WHERE
+    status = 'active'
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListActiveExamSessions(ctx context.Context) ([]ExamSession, error) {
+	rows, err := q.db.Query(ctx, listActiveExamSessions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExamSession
+	for rows.Next() {
+		var i ExamSession
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProblemGroupType,
+			&i.ProblemGroupID,
+			&i.OpenedBy,
+			&i.DurationMinutes,
+			&i.Status,
+			&i.StartedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActiveExamSessionsForUser = `-- name: ListActiveExamSessionsForUser :many
+SELECT es.id, es.created_at, es.updated_at, es.problem_group_type, es.problem_group_id, es.opened_by, es.duration_minutes, es.status, es.started_at
+FROM
+    exam_sessions es
+    JOIN exam_session_students ess ON es.id = ess.session_id
+WHERE
+    ess.user_id = $1
+    AND es.status = 'active'
+    AND ess.status IN ('assigned', 'active')
+ORDER BY es.created_at DESC
+`
+
+func (q *Queries) ListActiveExamSessionsForUser(ctx context.Context, userID int64) ([]ExamSession, error) {
+	rows, err := q.db.Query(ctx, listActiveExamSessionsForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExamSession
+	for rows.Next() {
+		var i ExamSession
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProblemGroupType,
+			&i.ProblemGroupID,
+			&i.OpenedBy,
+			&i.DurationMinutes,
+			&i.Status,
+			&i.StartedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCompSciProblemGroups = `-- name: ListCompSciProblemGroups :many
@@ -825,6 +1529,51 @@ func (q *Queries) ListCompSciSubmissionsByUserAndProblem(ctx context.Context, ar
 	return items, nil
 }
 
+const listCompSciSubmissionsByUserWithLimit = `-- name: ListCompSciSubmissionsByUserWithLimit :many
+SELECT id, created_at, user_id, problem_id, code, score, max_score, passed_tests, total_tests, results_json
+FROM comp_sci_submissions
+WHERE
+    user_id = $1
+ORDER BY created_at DESC
+LIMIT CASE WHEN $2::int IS NULL THEN 2147483647 ELSE $2::int END
+`
+
+type ListCompSciSubmissionsByUserWithLimitParams struct {
+	UserID     int64       `json:"user_id"`
+	LimitCount pgtype.Int4 `json:"limit_count"`
+}
+
+func (q *Queries) ListCompSciSubmissionsByUserWithLimit(ctx context.Context, arg ListCompSciSubmissionsByUserWithLimitParams) ([]CompSciSubmission, error) {
+	rows, err := q.db.Query(ctx, listCompSciSubmissionsByUserWithLimit, arg.UserID, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CompSciSubmission
+	for rows.Next() {
+		var i CompSciSubmission
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.ProblemID,
+			&i.Code,
+			&i.Score,
+			&i.MaxScore,
+			&i.PassedTests,
+			&i.TotalTests,
+			&i.ResultsJson,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCompSciTestCases = `-- name: ListCompSciTestCases :many
 SELECT id, created_at, updated_at, problem_id, input, output, correct_points FROM comp_sci_test_cases ORDER BY id
 `
@@ -890,7 +1639,7 @@ func (q *Queries) ListCompSciTestCasesByProblem(ctx context.Context, problemID i
 }
 
 const listCourses = `-- name: ListCourses :many
-SELECT id, created_at, updated_at, name, institution FROM courses ORDER BY id
+SELECT id, created_at, updated_at, name, subject, institution, owner_id FROM courses ORDER BY id
 `
 
 func (q *Queries) ListCourses(ctx context.Context) ([]Course, error) {
@@ -907,7 +1656,9 @@ func (q *Queries) ListCourses(ctx context.Context) ([]Course, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Name,
+			&i.Subject,
 			&i.Institution,
+			&i.OwnerID,
 		); err != nil {
 			return nil, err
 		}
@@ -920,7 +1671,7 @@ func (q *Queries) ListCourses(ctx context.Context) ([]Course, error) {
 }
 
 const listCoursesByInstitution = `-- name: ListCoursesByInstitution :many
-SELECT id, created_at, updated_at, name, institution FROM courses WHERE institution = $1 ORDER BY id
+SELECT id, created_at, updated_at, name, subject, institution, owner_id FROM courses WHERE institution = $1 ORDER BY id
 `
 
 func (q *Queries) ListCoursesByInstitution(ctx context.Context, institution string) ([]Course, error) {
@@ -937,7 +1688,41 @@ func (q *Queries) ListCoursesByInstitution(ctx context.Context, institution stri
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Name,
+			&i.Subject,
 			&i.Institution,
+			&i.OwnerID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCoursesByOwner = `-- name: ListCoursesByOwner :many
+SELECT id, created_at, updated_at, name, subject, institution, owner_id FROM courses WHERE owner_id = $1 ORDER BY id
+`
+
+func (q *Queries) ListCoursesByOwner(ctx context.Context, ownerID pgtype.Int8) ([]Course, error) {
+	rows, err := q.db.Query(ctx, listCoursesByOwner, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Course
+	for rows.Next() {
+		var i Course
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Name,
+			&i.Subject,
+			&i.Institution,
+			&i.OwnerID,
 		); err != nil {
 			return nil, err
 		}
@@ -950,7 +1735,7 @@ func (q *Queries) ListCoursesByInstitution(ctx context.Context, institution stri
 }
 
 const listCoursesByUser = `-- name: ListCoursesByUser :many
-SELECT c.id, c.created_at, c.updated_at, c.name, c.institution
+SELECT c.id, c.created_at, c.updated_at, c.name, c.subject, c.institution, c.owner_id
 FROM courses c
     JOIN user_courses uc ON c.id = uc.course_id
 WHERE
@@ -972,7 +1757,606 @@ func (q *Queries) ListCoursesByUser(ctx context.Context, userID int64) ([]Course
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Name,
+			&i.Subject,
 			&i.Institution,
+			&i.OwnerID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExamSessionStudents = `-- name: ListExamSessionStudents :many
+SELECT id, created_at, session_id, user_id, status, joined_at, ends_at, submitted_at, auto_submitted
+FROM exam_session_students
+WHERE
+    session_id = $1
+ORDER BY id
+`
+
+func (q *Queries) ListExamSessionStudents(ctx context.Context, sessionID int64) ([]ExamSessionStudent, error) {
+	rows, err := q.db.Query(ctx, listExamSessionStudents, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExamSessionStudent
+	for rows.Next() {
+		var i ExamSessionStudent
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.SessionID,
+			&i.UserID,
+			&i.Status,
+			&i.JoinedAt,
+			&i.EndsAt,
+			&i.SubmittedAt,
+			&i.AutoSubmitted,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExamSessionsByGroup = `-- name: ListExamSessionsByGroup :many
+SELECT id, created_at, updated_at, problem_group_type, problem_group_id, opened_by, duration_minutes, status, started_at
+FROM exam_sessions
+WHERE
+    problem_group_type = $1
+    AND problem_group_id = $2
+ORDER BY created_at DESC
+`
+
+type ListExamSessionsByGroupParams struct {
+	ProblemGroupType string `json:"problem_group_type"`
+	ProblemGroupID   int64  `json:"problem_group_id"`
+}
+
+func (q *Queries) ListExamSessionsByGroup(ctx context.Context, arg ListExamSessionsByGroupParams) ([]ExamSession, error) {
+	rows, err := q.db.Query(ctx, listExamSessionsByGroup, arg.ProblemGroupType, arg.ProblemGroupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExamSession
+	for rows.Next() {
+		var i ExamSession
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProblemGroupType,
+			&i.ProblemGroupID,
+			&i.OpenedBy,
+			&i.DurationMinutes,
+			&i.Status,
+			&i.StartedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExamSessionsByTeacher = `-- name: ListExamSessionsByTeacher :many
+SELECT id, created_at, updated_at, problem_group_type, problem_group_id, opened_by, duration_minutes, status, started_at
+FROM exam_sessions
+WHERE
+    opened_by = $1
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListExamSessionsByTeacher(ctx context.Context, openedBy int64) ([]ExamSession, error) {
+	rows, err := q.db.Query(ctx, listExamSessionsByTeacher, openedBy)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExamSession
+	for rows.Next() {
+		var i ExamSession
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProblemGroupType,
+			&i.ProblemGroupID,
+			&i.OpenedBy,
+			&i.DurationMinutes,
+			&i.Status,
+			&i.StartedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExamStudentsNeedingAutoSubmit = `-- name: ListExamStudentsNeedingAutoSubmit :many
+SELECT id, created_at, session_id, user_id, status, joined_at, ends_at, submitted_at, auto_submitted
+FROM exam_session_students
+WHERE
+    status = 'active'
+    AND ends_at < CURRENT_TIMESTAMP
+`
+
+func (q *Queries) ListExamStudentsNeedingAutoSubmit(ctx context.Context) ([]ExamSessionStudent, error) {
+	rows, err := q.db.Query(ctx, listExamStudentsNeedingAutoSubmit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExamSessionStudent
+	for rows.Next() {
+		var i ExamSessionStudent
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.SessionID,
+			&i.UserID,
+			&i.Status,
+			&i.JoinedAt,
+			&i.EndsAt,
+			&i.SubmittedAt,
+			&i.AutoSubmitted,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExamWorkInProgressByStudent = `-- name: ListExamWorkInProgressByStudent :many
+SELECT id, session_student_id, problem_id, problem_type, current_answer, saved_at FROM exam_work_in_progress WHERE session_student_id = $1
+`
+
+func (q *Queries) ListExamWorkInProgressByStudent(ctx context.Context, sessionStudentID int64) ([]ExamWorkInProgress, error) {
+	rows, err := q.db.Query(ctx, listExamWorkInProgressByStudent, sessionStudentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExamWorkInProgress
+	for rows.Next() {
+		var i ExamWorkInProgress
+		if err := rows.Scan(
+			&i.ID,
+			&i.SessionStudentID,
+			&i.ProblemID,
+			&i.ProblemType,
+			&i.CurrentAnswer,
+			&i.SavedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listQuizProblemGroups = `-- name: ListQuizProblemGroups :many
+SELECT id, created_at, updated_at, type, course_id, name, description FROM quiz_problem_groups ORDER BY id
+`
+
+func (q *Queries) ListQuizProblemGroups(ctx context.Context) ([]QuizProblemGroup, error) {
+	rows, err := q.db.Query(ctx, listQuizProblemGroups)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuizProblemGroup
+	for rows.Next() {
+		var i QuizProblemGroup
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Type,
+			&i.CourseID,
+			&i.Name,
+			&i.Description,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listQuizProblemGroupsByCourse = `-- name: ListQuizProblemGroupsByCourse :many
+SELECT id, created_at, updated_at, type, course_id, name, description FROM quiz_problem_groups WHERE course_id = $1 ORDER BY id
+`
+
+func (q *Queries) ListQuizProblemGroupsByCourse(ctx context.Context, courseID int64) ([]QuizProblemGroup, error) {
+	rows, err := q.db.Query(ctx, listQuizProblemGroupsByCourse, courseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuizProblemGroup
+	for rows.Next() {
+		var i QuizProblemGroup
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Type,
+			&i.CourseID,
+			&i.Name,
+			&i.Description,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listQuizProblemOptions = `-- name: ListQuizProblemOptions :many
+SELECT id, created_at, updated_at, problem_id, option_text, is_correct, display_order FROM quiz_problem_options ORDER BY id
+`
+
+func (q *Queries) ListQuizProblemOptions(ctx context.Context) ([]QuizProblemOption, error) {
+	rows, err := q.db.Query(ctx, listQuizProblemOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuizProblemOption
+	for rows.Next() {
+		var i QuizProblemOption
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProblemID,
+			&i.OptionText,
+			&i.IsCorrect,
+			&i.DisplayOrder,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listQuizProblemOptionsByProblem = `-- name: ListQuizProblemOptionsByProblem :many
+SELECT id, created_at, updated_at, problem_id, option_text, is_correct, display_order
+FROM quiz_problem_options
+WHERE
+    problem_id = $1
+ORDER BY display_order
+`
+
+func (q *Queries) ListQuizProblemOptionsByProblem(ctx context.Context, problemID int64) ([]QuizProblemOption, error) {
+	rows, err := q.db.Query(ctx, listQuizProblemOptionsByProblem, problemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuizProblemOption
+	for rows.Next() {
+		var i QuizProblemOption
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProblemID,
+			&i.OptionText,
+			&i.IsCorrect,
+			&i.DisplayOrder,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listQuizProblems = `-- name: ListQuizProblems :many
+SELECT id, created_at, updated_at, group_id, problem_type, name, description, problem_text, points, correct_answer FROM quiz_problems ORDER BY id
+`
+
+func (q *Queries) ListQuizProblems(ctx context.Context) ([]QuizProblem, error) {
+	rows, err := q.db.Query(ctx, listQuizProblems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuizProblem
+	for rows.Next() {
+		var i QuizProblem
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.GroupID,
+			&i.ProblemType,
+			&i.Name,
+			&i.Description,
+			&i.ProblemText,
+			&i.Points,
+			&i.CorrectAnswer,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listQuizProblemsByGroup = `-- name: ListQuizProblemsByGroup :many
+SELECT id, created_at, updated_at, group_id, problem_type, name, description, problem_text, points, correct_answer FROM quiz_problems WHERE group_id = $1 ORDER BY id
+`
+
+func (q *Queries) ListQuizProblemsByGroup(ctx context.Context, groupID int64) ([]QuizProblem, error) {
+	rows, err := q.db.Query(ctx, listQuizProblemsByGroup, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuizProblem
+	for rows.Next() {
+		var i QuizProblem
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.GroupID,
+			&i.ProblemType,
+			&i.Name,
+			&i.Description,
+			&i.ProblemText,
+			&i.Points,
+			&i.CorrectAnswer,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listQuizSubmissionsByProblem = `-- name: ListQuizSubmissionsByProblem :many
+SELECT id, created_at, user_id, problem_id, answer_text, selected_options, is_correct, score, max_score, feedback
+FROM quiz_submissions
+WHERE
+    problem_id = $1
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListQuizSubmissionsByProblem(ctx context.Context, problemID int64) ([]QuizSubmission, error) {
+	rows, err := q.db.Query(ctx, listQuizSubmissionsByProblem, problemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuizSubmission
+	for rows.Next() {
+		var i QuizSubmission
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.ProblemID,
+			&i.AnswerText,
+			&i.SelectedOptions,
+			&i.IsCorrect,
+			&i.Score,
+			&i.MaxScore,
+			&i.Feedback,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listQuizSubmissionsByUser = `-- name: ListQuizSubmissionsByUser :many
+SELECT id, created_at, user_id, problem_id, answer_text, selected_options, is_correct, score, max_score, feedback
+FROM quiz_submissions
+WHERE
+    user_id = $1
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListQuizSubmissionsByUser(ctx context.Context, userID int64) ([]QuizSubmission, error) {
+	rows, err := q.db.Query(ctx, listQuizSubmissionsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuizSubmission
+	for rows.Next() {
+		var i QuizSubmission
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.ProblemID,
+			&i.AnswerText,
+			&i.SelectedOptions,
+			&i.IsCorrect,
+			&i.Score,
+			&i.MaxScore,
+			&i.Feedback,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listQuizSubmissionsByUserAndProblem = `-- name: ListQuizSubmissionsByUserAndProblem :many
+SELECT id, created_at, user_id, problem_id, answer_text, selected_options, is_correct, score, max_score, feedback
+FROM quiz_submissions
+WHERE
+    user_id = $1
+    AND problem_id = $2
+ORDER BY created_at DESC
+`
+
+type ListQuizSubmissionsByUserAndProblemParams struct {
+	UserID    int64 `json:"user_id"`
+	ProblemID int64 `json:"problem_id"`
+}
+
+func (q *Queries) ListQuizSubmissionsByUserAndProblem(ctx context.Context, arg ListQuizSubmissionsByUserAndProblemParams) ([]QuizSubmission, error) {
+	rows, err := q.db.Query(ctx, listQuizSubmissionsByUserAndProblem, arg.UserID, arg.ProblemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuizSubmission
+	for rows.Next() {
+		var i QuizSubmission
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.ProblemID,
+			&i.AnswerText,
+			&i.SelectedOptions,
+			&i.IsCorrect,
+			&i.Score,
+			&i.MaxScore,
+			&i.Feedback,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listQuizSubmissionsByUserWithLimit = `-- name: ListQuizSubmissionsByUserWithLimit :many
+SELECT id, created_at, user_id, problem_id, answer_text, selected_options, is_correct, score, max_score, feedback
+FROM quiz_submissions
+WHERE
+    user_id = $1
+ORDER BY created_at DESC
+LIMIT CASE WHEN $2::int IS NULL THEN 2147483647 ELSE $2::int END
+`
+
+type ListQuizSubmissionsByUserWithLimitParams struct {
+	UserID     int64       `json:"user_id"`
+	LimitCount pgtype.Int4 `json:"limit_count"`
+}
+
+func (q *Queries) ListQuizSubmissionsByUserWithLimit(ctx context.Context, arg ListQuizSubmissionsByUserWithLimitParams) ([]QuizSubmission, error) {
+	rows, err := q.db.Query(ctx, listQuizSubmissionsByUserWithLimit, arg.UserID, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuizSubmission
+	for rows.Next() {
+		var i QuizSubmission
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.ProblemID,
+			&i.AnswerText,
+			&i.SelectedOptions,
+			&i.IsCorrect,
+			&i.Score,
+			&i.MaxScore,
+			&i.Feedback,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStudentsByInstitution = `-- name: ListStudentsByInstitution :many
+SELECT id, created_at, updated_at, email, institution, full_name, given_name, role
+FROM users
+WHERE
+    institution = $1
+    AND role = 'student'
+ORDER BY id
+`
+
+func (q *Queries) ListStudentsByInstitution(ctx context.Context, institution string) ([]User, error) {
+	rows, err := q.db.Query(ctx, listStudentsByInstitution, institution)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Email,
+			&i.Institution,
+			&i.FullName,
+			&i.GivenName,
+			&i.Role,
 		); err != nil {
 			return nil, err
 		}
@@ -1110,6 +2494,65 @@ func (q *Queries) ListUsersByInstitution(ctx context.Context, institution string
 	return items, nil
 }
 
+const startExamSession = `-- name: StartExamSession :one
+UPDATE exam_sessions
+SET
+    status = 'active',
+    started_at = CURRENT_TIMESTAMP,
+    updated_at = CURRENT_TIMESTAMP
+WHERE
+    id = $1 RETURNING id, created_at, updated_at, problem_group_type, problem_group_id, opened_by, duration_minutes, status, started_at
+`
+
+func (q *Queries) StartExamSession(ctx context.Context, id int64) (ExamSession, error) {
+	row := q.db.QueryRow(ctx, startExamSession, id)
+	var i ExamSession
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ProblemGroupType,
+		&i.ProblemGroupID,
+		&i.OpenedBy,
+		&i.DurationMinutes,
+		&i.Status,
+		&i.StartedAt,
+	)
+	return i, err
+}
+
+const submitExamSession = `-- name: SubmitExamSession :one
+UPDATE exam_session_students
+SET
+    status = 'submitted',
+    submitted_at = CURRENT_TIMESTAMP,
+    auto_submitted = $2
+WHERE
+    id = $1 RETURNING id, created_at, session_id, user_id, status, joined_at, ends_at, submitted_at, auto_submitted
+`
+
+type SubmitExamSessionParams struct {
+	ID            int64       `json:"id"`
+	AutoSubmitted pgtype.Bool `json:"auto_submitted"`
+}
+
+func (q *Queries) SubmitExamSession(ctx context.Context, arg SubmitExamSessionParams) (ExamSessionStudent, error) {
+	row := q.db.QueryRow(ctx, submitExamSession, arg.ID, arg.AutoSubmitted)
+	var i ExamSessionStudent
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.SessionID,
+		&i.UserID,
+		&i.Status,
+		&i.JoinedAt,
+		&i.EndsAt,
+		&i.SubmittedAt,
+		&i.AutoSubmitted,
+	)
+	return i, err
+}
+
 const updateCompSciProblem = `-- name: UpdateCompSciProblem :one
 UPDATE comp_sci_problems
 SET
@@ -1245,27 +2688,211 @@ const updateCourse = `-- name: UpdateCourse :one
 UPDATE courses
 SET
     name = $2,
-    institution = $3,
+    subject = $3,
+    institution = $4,
     updated_at = CURRENT_TIMESTAMP
 WHERE
-    id = $1 RETURNING id, created_at, updated_at, name, institution
+    id = $1 RETURNING id, created_at, updated_at, name, subject, institution, owner_id
 `
 
 type UpdateCourseParams struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name"`
+	Subject     string `json:"subject"`
 	Institution string `json:"institution"`
 }
 
 func (q *Queries) UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Course, error) {
-	row := q.db.QueryRow(ctx, updateCourse, arg.ID, arg.Name, arg.Institution)
+	row := q.db.QueryRow(ctx, updateCourse,
+		arg.ID,
+		arg.Name,
+		arg.Subject,
+		arg.Institution,
+	)
 	var i Course
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Name,
+		&i.Subject,
 		&i.Institution,
+		&i.OwnerID,
+	)
+	return i, err
+}
+
+const updateQuizProblem = `-- name: UpdateQuizProblem :one
+UPDATE quiz_problems
+SET
+    group_id = $2,
+    problem_type = $3,
+    name = $4,
+    description = $5,
+    problem_text = $6,
+    points = $7,
+    correct_answer = $8,
+    updated_at = CURRENT_TIMESTAMP
+WHERE
+    id = $1 RETURNING id, created_at, updated_at, group_id, problem_type, name, description, problem_text, points, correct_answer
+`
+
+type UpdateQuizProblemParams struct {
+	ID            int64           `json:"id"`
+	GroupID       int64           `json:"group_id"`
+	ProblemType   QuizProblemType `json:"problem_type"`
+	Name          string          `json:"name"`
+	Description   string          `json:"description"`
+	ProblemText   string          `json:"problem_text"`
+	Points        int32           `json:"points"`
+	CorrectAnswer pgtype.Text     `json:"correct_answer"`
+}
+
+func (q *Queries) UpdateQuizProblem(ctx context.Context, arg UpdateQuizProblemParams) (QuizProblem, error) {
+	row := q.db.QueryRow(ctx, updateQuizProblem,
+		arg.ID,
+		arg.GroupID,
+		arg.ProblemType,
+		arg.Name,
+		arg.Description,
+		arg.ProblemText,
+		arg.Points,
+		arg.CorrectAnswer,
+	)
+	var i QuizProblem
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.GroupID,
+		&i.ProblemType,
+		&i.Name,
+		&i.Description,
+		&i.ProblemText,
+		&i.Points,
+		&i.CorrectAnswer,
+	)
+	return i, err
+}
+
+const updateQuizProblemGroup = `-- name: UpdateQuizProblemGroup :one
+UPDATE quiz_problem_groups
+SET
+    type = $2,
+    course_id = $3,
+    name = $4,
+    description = $5,
+    updated_at = CURRENT_TIMESTAMP
+WHERE
+    id = $1 RETURNING id, created_at, updated_at, type, course_id, name, description
+`
+
+type UpdateQuizProblemGroupParams struct {
+	ID          int64              `json:"id"`
+	Type        CompSciProblemType `json:"type"`
+	CourseID    int64              `json:"course_id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+}
+
+func (q *Queries) UpdateQuizProblemGroup(ctx context.Context, arg UpdateQuizProblemGroupParams) (QuizProblemGroup, error) {
+	row := q.db.QueryRow(ctx, updateQuizProblemGroup,
+		arg.ID,
+		arg.Type,
+		arg.CourseID,
+		arg.Name,
+		arg.Description,
+	)
+	var i QuizProblemGroup
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Type,
+		&i.CourseID,
+		&i.Name,
+		&i.Description,
+	)
+	return i, err
+}
+
+const updateQuizProblemOption = `-- name: UpdateQuizProblemOption :one
+UPDATE quiz_problem_options
+SET
+    problem_id = $2,
+    option_text = $3,
+    is_correct = $4,
+    display_order = $5,
+    updated_at = CURRENT_TIMESTAMP
+WHERE
+    id = $1 RETURNING id, created_at, updated_at, problem_id, option_text, is_correct, display_order
+`
+
+type UpdateQuizProblemOptionParams struct {
+	ID           int64  `json:"id"`
+	ProblemID    int64  `json:"problem_id"`
+	OptionText   string `json:"option_text"`
+	IsCorrect    bool   `json:"is_correct"`
+	DisplayOrder int32  `json:"display_order"`
+}
+
+func (q *Queries) UpdateQuizProblemOption(ctx context.Context, arg UpdateQuizProblemOptionParams) (QuizProblemOption, error) {
+	row := q.db.QueryRow(ctx, updateQuizProblemOption,
+		arg.ID,
+		arg.ProblemID,
+		arg.OptionText,
+		arg.IsCorrect,
+		arg.DisplayOrder,
+	)
+	var i QuizProblemOption
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ProblemID,
+		&i.OptionText,
+		&i.IsCorrect,
+		&i.DisplayOrder,
+	)
+	return i, err
+}
+
+const updateQuizSubmissionFeedback = `-- name: UpdateQuizSubmissionFeedback :one
+UPDATE quiz_submissions
+SET
+    is_correct = $2,
+    score = $3,
+    feedback = $4
+WHERE
+    id = $1 RETURNING id, created_at, user_id, problem_id, answer_text, selected_options, is_correct, score, max_score, feedback
+`
+
+type UpdateQuizSubmissionFeedbackParams struct {
+	ID        int64       `json:"id"`
+	IsCorrect pgtype.Bool `json:"is_correct"`
+	Score     int32       `json:"score"`
+	Feedback  pgtype.Text `json:"feedback"`
+}
+
+func (q *Queries) UpdateQuizSubmissionFeedback(ctx context.Context, arg UpdateQuizSubmissionFeedbackParams) (QuizSubmission, error) {
+	row := q.db.QueryRow(ctx, updateQuizSubmissionFeedback,
+		arg.ID,
+		arg.IsCorrect,
+		arg.Score,
+		arg.Feedback,
+	)
+	var i QuizSubmission
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UserID,
+		&i.ProblemID,
+		&i.AnswerText,
+		&i.SelectedOptions,
+		&i.IsCorrect,
+		&i.Score,
+		&i.MaxScore,
+		&i.Feedback,
 	)
 	return i, err
 }
@@ -1311,6 +2938,51 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.FullName,
 		&i.GivenName,
 		&i.Role,
+	)
+	return i, err
+}
+
+const upsertExamWorkInProgress = `-- name: UpsertExamWorkInProgress :one
+INSERT INTO
+    exam_work_in_progress (
+        session_student_id,
+        problem_id,
+        problem_type,
+        current_answer
+    )
+VALUES ($1, $2, $3, $4) ON CONFLICT (
+        session_student_id,
+        problem_id,
+        problem_type
+    ) DO
+UPDATE
+SET
+    current_answer = $4,
+    saved_at = CURRENT_TIMESTAMP RETURNING id, session_student_id, problem_id, problem_type, current_answer, saved_at
+`
+
+type UpsertExamWorkInProgressParams struct {
+	SessionStudentID int64  `json:"session_student_id"`
+	ProblemID        int64  `json:"problem_id"`
+	ProblemType      string `json:"problem_type"`
+	CurrentAnswer    string `json:"current_answer"`
+}
+
+func (q *Queries) UpsertExamWorkInProgress(ctx context.Context, arg UpsertExamWorkInProgressParams) (ExamWorkInProgress, error) {
+	row := q.db.QueryRow(ctx, upsertExamWorkInProgress,
+		arg.SessionStudentID,
+		arg.ProblemID,
+		arg.ProblemType,
+		arg.CurrentAnswer,
+	)
+	var i ExamWorkInProgress
+	err := row.Scan(
+		&i.ID,
+		&i.SessionStudentID,
+		&i.ProblemID,
+		&i.ProblemType,
+		&i.CurrentAnswer,
+		&i.SavedAt,
 	)
 	return i, err
 }
