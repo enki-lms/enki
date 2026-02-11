@@ -2,13 +2,14 @@
   import RightArrow from "$lib/components/icons/RightArrowIcon.svelte";
 
   export let color: "blue" = "blue";
-  export let size: "sm" | "md" = "md";
+  export let size: "sm" | "md" | "lg" = "md";
   export let type: "button" | "submit" | "reset" = "button";
   export let disabled = false;
 
   const colors = new Map<string, string>([["blue", ""]]);
 
   const sizes = new Map<string, string>([
+    ["lg", "w-48 h-16"],
     ["md", "w-36 h-14"],
     ["sm", "w-24 h-14"],
   ]);

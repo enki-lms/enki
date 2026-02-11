@@ -19,14 +19,12 @@
   let isLoadingGroups = false;
   let error: string | null = null;
 
-  // Modal states
   let isFormModalOpen = false;
   let isDeleteDialogOpen = false;
   let isSubmitting = false;
   let editingGroup: ProblemGroup | null = null;
   let deletingGroup: ProblemGroup | null = null;
 
-  // Detail view
   let selectedGroup: ProblemGroup | null = null;
 
   const formFields: FieldConfig[] = [
@@ -177,7 +175,7 @@
   <div class="w-full">
     <div class="flex items-center justify-between mb-6">
       <h2 class="text-2xl font-semibold text-gray-900">Problem Sets</h2>
-      <Button size="md" on:click={handleNewGroup} disabled={!selectedCourseId}>
+      <Button size="lg" on:click={handleNewGroup} disabled={!selectedCourseId}>
         <span slot="icon" class="text-white">
           <PlusIcon />
         </span>
@@ -185,7 +183,6 @@
       </Button>
     </div>
 
-    <!-- Course Selector -->
     <div class="mb-6">
       <label
         for="course-select"

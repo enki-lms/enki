@@ -26,7 +26,6 @@
 
     loading = true;
 
-    // Scroll to bottom
     setTimeout(() => {
       if (messageContainer) {
         messageContainer.scrollTop = messageContainer.scrollHeight;
@@ -79,7 +78,7 @@
 </script>
 
 <div class="flex flex-col h-full">
-  <!-- Messages Container -->
+
   <div
     bind:this={messageContainer}
     class="flex-1 overflow-y-auto p-3 md:p-4 space-y-4"
@@ -110,7 +109,6 @@
     {/each}
   </div>
 
-  <!-- Input Area -->
   <div class="border-t border-gray-300 p-3 md:p-4">
     <div class="flex gap-2 flex-col sm:flex-row">
       <textarea

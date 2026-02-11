@@ -10,7 +10,6 @@
   import { onMount } from "svelte";
   import { api, type Problem } from "$lib/api";
 
-  // Get problem ID from URL
   const problemId = $page.params.id ?? "";
 
   let activeDescTab = "Description";
@@ -66,7 +65,6 @@
       });
 
       testResultText = output;
-      // Switch to test result tab
       activeTestTab = "Test Result";
     } catch (e) {
       testResultText = `Error submitting solution: ${e instanceof Error ? e.message : "Unknown error"}`;
@@ -75,7 +73,6 @@
 </script>
 
 <div class="h-screen bg-[#E8EEF2] flex flex-col">
-  <!-- Header -->
   <div
     class="bg-white border-b border-gray-300 px-4 md:px-6 py-3 md:py-4 flex items-center gap-2 md:gap-4 flex-wrap md:flex-nowrap"
   >
@@ -88,11 +85,9 @@
     </div>
   </div>
 
-  <!-- Main Content -->
   <div
     class="flex flex-1 gap-3 md:gap-6 p-3 md:p-6 overflow-hidden flex-col lg:flex-row"
   >
-    <!-- Left Panel - Problem Description -->
     <div
       class="flex-1 flex flex-col min-w-0 border border-gray-300 rounded-lg bg-white"
     >
@@ -156,9 +151,8 @@
       </div>
     </div>
 
-    <!-- Right Panel - Solution and Test Result as separate frames -->
     <div class="flex-1 lg:w-1/2 flex flex-col gap-3 md:gap-6 min-w-0">
-      <!-- Solution Frame -->
+
       <div
         class="flex-1 flex flex-col min-w-0 border border-gray-300 rounded-lg bg-white"
       >
@@ -168,7 +162,6 @@
         </div>
       </div>
 
-      <!-- Test Result Frame -->
       <div
         class="flex-1 flex flex-col min-w-0 border border-gray-300 rounded-lg bg-white"
       >

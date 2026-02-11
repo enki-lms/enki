@@ -28,7 +28,6 @@
   let prevIsOpen = false;
 
   $: if (isOpen && !prevIsOpen) {
-    // Only reset values when modal first opens
     values = { ...initialValues };
     fields.forEach((field) => {
       if (values[field.name] === undefined) {

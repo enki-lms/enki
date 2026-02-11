@@ -15,14 +15,12 @@
   let isLoading = true;
   let error: string | null = null;
 
-  // Modal states
   let isFormModalOpen = false;
   let isDeleteDialogOpen = false;
   let isSubmitting = false;
   let editingCourse: Course | null = null;
   let deletingCourse: Course | null = null;
 
-  // Detail view
   let selectedCourse: Course | null = null;
 
   const formFields: FieldConfig[] = [
@@ -123,7 +121,7 @@
 
   function handleBack() {
     selectedCourse = null;
-    fetchCourses(); // Refresh in case enrollments changed
+    fetchCourses(); 
   }
 </script>
 
@@ -133,7 +131,7 @@
   <div class="w-full">
     <div class="flex items-center justify-between mb-6">
       <h2 class="text-2xl font-semibold text-gray-900">Courses</h2>
-      <Button size="md" on:click={handleNewCourse}>
+      <Button size="lg" on:click={handleNewCourse}>
         <span slot="icon" class="text-white">
           <PlusIcon />
         </span>

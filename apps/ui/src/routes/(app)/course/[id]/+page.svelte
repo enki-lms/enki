@@ -103,7 +103,6 @@
           </div>
         </div>
       {:else if course}
-        <!-- Header Card -->
         <div
           class="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 mb-6"
         >
@@ -134,7 +133,6 @@
           </div>
         </div>
 
-        <!-- Problem Groups Section -->
         {#if problemGroups.length > 0}
           <div class="mb-6">
             <h2
@@ -206,7 +204,6 @@
           </div>
         {/if}
 
-        <!-- Quiz Groups Section -->
         {#if quizGroups.length > 0}
           <div class="mb-6">
             <h2
@@ -278,7 +275,6 @@
           </div>
         {/if}
 
-        <!-- Empty State -->
         {#if problemGroups.length === 0 && quizGroups.length === 0}
           <div
             class="bg-white rounded-2xl p-12 shadow-sm flex flex-col items-center text-center"

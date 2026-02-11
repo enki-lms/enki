@@ -28,7 +28,6 @@
   let isSubmitting = false;
   let error: string | null = null;
 
-  // Form values
   let selectedCourseId: number | "" = "";
   let problemGroupType: "comp_sci" | "quiz" = "comp_sci";
   let selectedGroupId: number | "" = "";
@@ -181,7 +180,6 @@
         </div>
       {:else}
         <form on:submit|preventDefault={handleSubmit} class="space-y-5">
-          <!-- Course Selection -->
           <div>
             <label
               for="course"
@@ -197,7 +195,6 @@
             />
           </div>
 
-          <!-- Problem Group Type -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Exam Type <span class="text-red-500">*</span>
@@ -226,7 +223,6 @@
             </div>
           </div>
 
-          <!-- Problem Group Selection -->
           {#if selectedCourseId}
             <div>
               <label
@@ -257,7 +253,6 @@
             </div>
           {/if}
 
-          <!-- Duration -->
           <div>
             <label
               for="duration"
@@ -275,7 +270,6 @@
             />
           </div>
 
-          <!-- Student Selection -->
           {#if selectedCourseId && courseEnrollments.length > 0}
             <div>
               <div class="flex items-center justify-between mb-2">

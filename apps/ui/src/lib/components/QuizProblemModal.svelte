@@ -18,7 +18,6 @@
     cancel: void;
   }>();
 
-  // Form values
   let problemType: QuizProblemType = "open_ended";
   let name = "";
   let description = "";
@@ -102,13 +101,11 @@
 
   function toggleCorrect(index: number) {
     if (problemType === "mcq_single" || problemType === "true_false") {
-      // Only one can be correct
       options = options.map((o, i) => ({
         ...o,
         is_correct: i === index,
       }));
     } else {
-      // Multiple can be correct
       options = options.map((o, i) =>
         i === index ? { ...o, is_correct: !o.is_correct } : o,
       );
@@ -176,7 +173,6 @@
       </h2>
 
       <form on:submit|preventDefault={handleSubmit} class="space-y-4">
-        <!-- Problem Type -->
         <div>
           <label
             for="type"
@@ -196,7 +192,6 @@
           </select>
         </div>
 
-        <!-- Name -->
         <div>
           <label
             for="name"
@@ -215,7 +210,6 @@
           />
         </div>
 
-        <!-- Description -->
         <div>
           <label
             for="description"
@@ -233,7 +227,6 @@
           />
         </div>
 
-        <!-- Problem Text -->
         <div>
           <label
             for="problem_text"
@@ -252,7 +245,6 @@
           ></textarea>
         </div>
 
-        <!-- Points -->
         <div>
           <label
             for="points"
@@ -272,7 +264,6 @@
           />
         </div>
 
-        <!-- Correct Answer (for fill_blank) -->
         {#if needsCorrectAnswer}
           <div>
             <label
@@ -293,7 +284,6 @@
           </div>
         {/if}
 
-        <!-- Options (for MCQ/TrueFalse) -->
         {#if needsOptions}
           <div>
             <div class="flex items-center justify-between mb-2">

@@ -34,21 +34,18 @@ function getTokenFromCookie(): string | null {
 }
 
 export const load: LayoutLoad = ({route}) => {
-  // Check for auth token in cookies (client-side only since SSR is disabled)
   if (typeof document !== "undefined") {
     const token = getTokenFromCookie();
     if (!token) {
       throw redirect(302, "/login");
     }
 
-    // Parse JWT to check user role
     const payload = parseJWT(token);
     console.log(payload?.role)
     if (payload && (payload.role === "teacher" || payload.role === "admin") && !route.id.includes("admin")) {
       throw redirect(302, "/admin");
     }
 
-    // Return user data for child pages
     return {
       user: payload ? {
         id: payload.user_id,

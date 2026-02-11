@@ -36,14 +36,11 @@
       codeSubmissions = codeData;
       quizSubmissions = quizData;
 
-      // Fetch problem names for all submissions
       const problemIds = new Set([
         ...codeData.map((s) => s.problem_id),
         ...quizData.map((s) => s.problem_id),
       ]);
 
-      // For now, we'll just use the problem_id as the name
-      // A proper implementation would fetch problem names from the API
       problemIds.forEach((id) => {
         problemNames.set(id, `Problem #${id}`);
       });
@@ -82,7 +79,6 @@
 
   <main class="p-4 md:p-8">
     <div class="max-w-4xl mx-auto">
-      <!-- Header Card -->
       <div
         class="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 mb-6"
       >
@@ -96,7 +92,6 @@
             <p class="mt-1 text-gray-500">View all your past submissions</p>
           </div>
 
-          <!-- Stats -->
           {#if !loading && !error}
             <div class="flex gap-4">
               <div
@@ -146,7 +141,6 @@
         </div>
       </div>
 
-      <!-- Tabs and Content -->
       <div
         class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
       >

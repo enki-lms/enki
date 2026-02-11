@@ -20,14 +20,12 @@
   let isLoading = true;
   let error: string | null = null;
 
-  // Modal states
   let isFormModalOpen = false;
   let isDeleteDialogOpen = false;
   let isSubmitting = false;
   let editingProblem: QuizProblem | null = null;
   let deletingProblem: QuizProblem | null = null;
 
-  // Submissions view
   let viewingSubmissionsProblem: QuizProblem | null = null;
 
   const problemTypeLabels: Record<string, string> = {

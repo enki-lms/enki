@@ -12,7 +12,6 @@
   }: { data: { user?: { fullName?: string; email?: string; role?: string } } } =
     $props();
 
-  // Get the problem group ID from the URL
   const groupId = $page.params.id ?? "";
 
   let problems: Problem[] = $state([]);
@@ -20,10 +19,8 @@
   let error: string | null = $state(null);
   let groupTitle = $state("Problem List");
 
-  // Mock completion data - in a real app, this would come from the API
   function isCompleted(problemId: number): boolean {
-    // Simulate some problems being completed
-    const completed = [1, 3]; // IDs of completed problems
+    const completed = [1, 3]; 
     return completed.includes(problemId);
   }
 
@@ -37,7 +34,6 @@
     }
   });
 
-  // Calculate overall progress
   const completedCount = $derived(
     problems.filter((p) => isCompleted(p.id)).length,
   )
@@ -65,7 +61,6 @@
 
   <main class="p-4 md:p-8">
     <div class="max-w-4xl mx-auto">
-      <!-- Header Card -->
       <div
         class="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 mb-6"
       >
@@ -82,7 +77,6 @@
             </p>
           </div>
 
-          <!-- Overall Progress -->
           {#if !loading && !error && problems.length > 0}
             <div
               class="flex items-center gap-4 bg-gradient-to-r from-sky-50 to-emerald-50 rounded-xl px-5 py-3 border border-sky-100"
@@ -133,7 +127,6 @@
         </div>
       </div>
 
-      <!-- Problems Sidebar -->
       <div
         class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
       >

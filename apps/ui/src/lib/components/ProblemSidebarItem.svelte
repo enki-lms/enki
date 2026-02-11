@@ -28,7 +28,6 @@
   onclick={navigateToProblem}
 >
   <div class="flex items-center gap-3">
-    <!-- Status Icon -->
     <div
       class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium
         {completed
@@ -38,7 +37,6 @@
       {completed ? "✓" : "○"}
     </div>
 
-    <!-- Content -->
     <div class="flex-1 min-w-0">
       <h3
         class="font-semibold text-gray-900 truncate group-hover:text-sky-700 transition-colors duration-200"
@@ -52,7 +50,6 @@
       {/if}
     </div>
 
-    <!-- Arrow -->
     <div
       class="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
     >

@@ -34,7 +34,6 @@
 
 <div class="min-h-screen p-8 bg-gray-100">
   <div class="max-w-6xl mx-auto">
-    <!-- Header with Avatar and Logo -->
     <div class="mb-6 flex items-center gap-6">
       <ProfileMenu
         width="80"
@@ -46,18 +45,16 @@
       <LogoPlaceHolder />
     </div>
 
-    <!-- Main Card -->
     <Card
       padding="p-0"
       shadow={false}
       class="bg-white rounded-xl border-gray-200"
     >
-      <!-- Tabs -->
+
       <div class="px-6 pt-6">
         <Tabs tabs={tabsList} bind:active={activeTab} />
       </div>
 
-      <!-- Tab Content Area -->
       <div class="px-6 pb-6 pt-8 min-h-[600px]">
         {#if activeTab === "Problem Sets"}
           <ProblemSets />
