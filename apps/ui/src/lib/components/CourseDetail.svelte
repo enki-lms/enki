@@ -14,7 +14,6 @@
   let isLoading = true;
   let error: string | null = null;
 
-  // Modal states
   let isAddStudentModalOpen = false;
   let isRemoveDialogOpen = false;
   let isSubmitting = false;
@@ -46,7 +45,6 @@
     fetchData();
   });
 
-  // Get students not already enrolled
   $: availableStudents = allStudents.filter(
     (student) => !enrollments.some((e) => e.user_id === student.id),
   );
@@ -71,7 +69,6 @@
 
     try {
       const enrollment = await api.enrollStudent(course.id, selectedStudentId);
-      // Add student info to the enrollment
       const student = allStudents.find((s) => s.id === selectedStudentId);
       enrollment.user = student;
       enrollments = [...enrollments, enrollment];
@@ -219,7 +216,6 @@
   </div>
 </div>
 
-<!-- Add Student Modal -->
 {#if isAddStudentModalOpen}
   <div
     class="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"

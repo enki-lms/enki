@@ -10,11 +10,9 @@
   let isLoading = true;
   let error: string | null = null;
 
-  // Modal states
   let isCreateModalOpen = false;
   let isSubmitting = false;
 
-  // Detail view
   let selectedSession: ExamSession | null = null;
 
   const statusColors: Record<string, string> = {
@@ -79,7 +77,7 @@
   <div class="w-full">
     <div class="flex items-center justify-between mb-6">
       <h2 class="text-2xl font-semibold text-gray-900">Exam Sessions</h2>
-      <Button size="md" on:click={handleNewSession}>
+      <Button size="lg" on:click={handleNewSession}>
         <span slot="icon" class="text-white">
           <PlusIcon />
         </span>

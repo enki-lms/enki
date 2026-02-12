@@ -14,7 +14,6 @@
   let error: string | null = null;
   let isActionLoading = false;
 
-  // Discontinue dialog
   let isDiscontinueDialogOpen = false;
   let discontinuingStudent: ExamStudent | null = null;
 
@@ -166,7 +165,6 @@
     </div>
   {/if}
 
-  <!-- Session Info -->
   <div class="grid grid-cols-4 gap-4 mb-6 bg-gray-50 rounded-xl p-4">
     <div>
       <p class="text-sm text-gray-500">Status</p>
@@ -203,7 +201,6 @@
     </div>
   </div>
 
-  <!-- Students -->
   <div class="bg-gray-50 rounded-xl p-6">
     <h3 class="text-lg font-semibold text-gray-800 mb-4">
       Students ({students.length})

@@ -9,7 +9,6 @@
         color: string;
     }
 
-    // Placeholder courses - za backend
     const courses: Course[] = [
         
     ];
@@ -18,7 +17,6 @@
 
     const handleCourseClick = (course: Course) => {
         selectedCourse = course;
-        // za backend
         console.log('Selected course:', course.id);
     };
 

@@ -68,7 +68,6 @@
 <div
   class="bg-white rounded-xl border border-gray-200 overflow-hidden transition-all duration-200 hover:shadow-md hover:border-gray-300"
 >
-  <!-- Header - Always visible -->
   <button
     type="button"
     class="w-full p-4 text-left cursor-pointer"
@@ -77,7 +76,6 @@
     <div class="flex items-center justify-between gap-4">
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-1">
-          <!-- Type Badge -->
           <span
             class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {type ===
             'code'
@@ -123,7 +121,6 @@
         <h3 class="font-semibold text-gray-900 truncate">{problemName}</h3>
       </div>
 
-      <!-- Score -->
       <div class="flex items-center gap-3">
         <div class="text-right">
           <span
@@ -132,7 +129,6 @@
             {submission.score}/{submission.max_score}
           </span>
         </div>
-        <!-- Expand Arrow -->
         <svg
           class="w-5 h-5 text-gray-400 transition-transform duration-200 {expanded
             ? 'rotate-180'
@@ -151,7 +147,6 @@
       </div>
     </div>
 
-    <!-- Progress Bar -->
     <div class="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
       <div
         class="h-full rounded-full transition-all duration-500 {getProgressColor()}"
@@ -160,7 +155,6 @@
     </div>
   </button>
 
-  <!-- Expanded Details -->
   {#if expanded}
     <div class="px-4 pb-4 pt-0 border-t border-gray-100 animate-slideDown">
       {#if type === "code" && isCodeSubmission(submission)}

@@ -1,5 +1,5 @@
 <script lang="ts">
-    export let value: number = 0; // 0-100
+    export let value: number = 0; 
     export let showLabel = true;
 </script>
 

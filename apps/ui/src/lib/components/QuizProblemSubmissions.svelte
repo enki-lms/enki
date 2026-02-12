@@ -17,7 +17,6 @@
   let isLoading = true;
   let error: string | null = null;
 
-  // Grading state
   let gradingSubmission: QuizSubmission | null = null;
   let gradeScore = 0;
   let gradeFeedback = "";

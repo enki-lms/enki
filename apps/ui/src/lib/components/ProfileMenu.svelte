@@ -19,9 +19,7 @@
   }
 
   function handleSignOut() {
-    // Clear the token cookie
     document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    // Redirect to login
     window.location.href = "/login";
   }
 
@@ -56,7 +54,6 @@
       class="absolute left-0 top-full mt-2 w-64 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-50"
       role="menu"
     >
-      <!-- User Details Section -->
       <div class="px-4 py-3 border-b border-gray-100">
         <p class="text-sm font-semibold text-gray-900 truncate">{name}</p>
         {#if email}
@@ -71,7 +68,6 @@
         {/if}
       </div>
 
-      <!-- Submission History Link -->
       <a
         href="/submissions"
         class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors"
@@ -95,7 +91,6 @@
         Submission History
       </a>
 
-      <!-- Sign Out Button -->
       <button
         type="button"
         class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors"

@@ -1,45 +1,34 @@
 <script lang="ts">
-  // Props are now driven EXTERNALLY (by the store via the layout)
-  export let isOpen: boolean; // Controlled by store
+  export let isOpen: boolean; 
   export let title: string;
   export let description: string;
   export let confirmText: string;
-  export let cancelText: string | null; // Null means no cancel button
+  export let cancelText: string | null;
   export let showAction: boolean;
   export let isDangerous: boolean;
   export let isLoading: boolean;
 
-  // Callbacks to interact with the store
-  export let doConfirm: () => void; // Function to call when confirm is clicked
-  export let doCancel: () => void; // Function to call when cancel/close happens
+  export let doConfirm: () => void; 
+  export let doCancel: () => void; 
 
   let dialog: HTMLDialogElement;
 
-  // Reactive statement to control the native dialog based on the isOpen prop
   $: if (dialog && isOpen !== dialog.open) {
     if (isOpen) {
       dialog.showModal();
     } else {
-      // Ensure we only call close if it's actually open, prevent errors
       if (dialog.open) {
         dialog.close();
       }
     }
   }
 
-  // When the dialog's native 'close' event fires (ESC, backdrop click, or dialog.close())
-  // We need to inform the controlling logic (the store) via doCancel.
-  // Check if it's already being closed programmatically by the store setting isOpen=false
-  // If isOpen is still true when 'close' fires, it means it was an external close (ESC/backdrop).
   function handleDialogCloseEvent() {
     if (isOpen) {
-      doCancel(); // Trigger the cancel logic in the store
+      doCancel(); 
     }
-    // If isOpen is already false, the store initiated the close (via confirm/cancel button),
-    // so we don't need to call doCancel again.
   }
 
-  // Handle backdrop clicks specifically to trigger cancel
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === dialog) {
       doCancel();
@@ -72,7 +61,6 @@
       {#if showAction}
         <div class="flex justify-end gap-4">
           {#if cancelText}
-            <!-- Two-button confirmation style -->
             <button
               type="button"
               class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
@@ -92,7 +80,6 @@
               {confirmText}
             </button>
           {:else}
-            <!-- Single-button 'OK' style -->
             <button
               type="button"
               class="px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-md"

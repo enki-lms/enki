@@ -16,7 +16,6 @@
   let isLoading = true;
   let error: string | null = null;
 
-  // Modal states
   let isFormModalOpen = false;
   let isDeleteDialogOpen = false;
   let isSubmitting = false;

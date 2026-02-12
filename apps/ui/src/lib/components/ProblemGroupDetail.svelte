@@ -17,14 +17,12 @@
   let isLoading = true;
   let error: string | null = null;
 
-  // Modal states
   let isFormModalOpen = false;
   let isDeleteDialogOpen = false;
   let isSubmitting = false;
   let editingProblem: Problem | null = null;
   let deletingProblem: Problem | null = null;
 
-  // Detail view
   let selectedProblem: Problem | null = null;
 
   const formFields: FieldConfig[] = [
