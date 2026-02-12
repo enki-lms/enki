@@ -6,6 +6,7 @@
   import LanguageSelector from "$lib/components/LanguageSelector.svelte";
   import Chat from "$lib/components/Chat.svelte";
   import CodeEditor from "$lib/components/CodeEditor.svelte";
+  import { marked } from "marked";
 
   import { onMount } from "svelte";
   import { api, type Problem } from "$lib/api";
@@ -174,12 +175,19 @@
       >
         <Tabs tabs={testTabs} bind:active={activeTestTab} />
         <div class="flex-1 overflow-hidden animate-fadeIn" data-tab-content>
-          <textarea
-            readonly
-            bind:value={testResultText}
-            class="w-full h-full p-3 md:p-6 resize-none focus:outline-none focus:ring-2 focus:ring-[#77B6EA]"
-            placeholder="Test results will appear here..."
-          ></textarea>
+          <div
+            class="w-full h-full p-3 md:p-6 overflow-y-auto bg-gray-50 rounded-lg"
+          >
+            {#if testResultText}
+              <div class="prose prose-sm max-w-none">
+                {@html marked.parse(testResultText)}
+              </div>
+            {:else}
+              <p class="text-gray-500 italic">
+                Test results will appear here...
+              </p>
+            {/if}
+          </div>
         </div>
       </div>
     </div>

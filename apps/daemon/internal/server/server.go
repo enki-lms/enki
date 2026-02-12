@@ -17,12 +17,14 @@ import (
 	"github.com/enki/daemon/internal/api/quizsubmissions"
 	"github.com/enki/daemon/internal/api/submissions"
 	"github.com/enki/daemon/internal/api/testcases"
+	"github.com/enki/daemon/internal/api/uploads"
 	"github.com/enki/daemon/internal/api/users"
 	"github.com/enki/daemon/internal/auth"
 	"github.com/enki/daemon/internal/config"
 	"github.com/enki/daemon/internal/db"
 	"github.com/enki/daemon/internal/db/sqlc/sqlc"
 	"github.com/enki/daemon/internal/exam"
+	"github.com/enki/daemon/internal/grading"
 	"github.com/enki/daemon/internal/problem_eval"
 	"github.com/enki/daemon/internal/websocket"
 	"github.com/gin-gonic/gin"
@@ -67,12 +69,18 @@ func StartServer() error {
 		fmt.Printf("Warning: Code execution disabled: %v\n", err)
 	}
 
+	// Initialize AI client
+	aiClient := ai.NewClient(&cfg.AI)
+
+	// Initialize grading service
+	gradingService := grading.NewService(queries, executor, aiClient)
+
 	// Initialize WebSocket hub
-	wsHub := websocket.NewHub(queries)
+	wsHub := websocket.NewHub(queries, gradingService)
 	go wsHub.Run()
 
 	// Initialize and start exam timer service
-	timerService := exam.NewTimerService(queries, wsHub)
+	timerService := exam.NewTimerService(queries, wsHub, gradingService)
 	timerService.Start()
 	defer timerService.Stop()
 
@@ -113,7 +121,7 @@ func StartServer() error {
 
 	// Submission routes (only if executor is available)
 	if executor != nil {
-		submissionHandler := submissions.NewHandler(queries, authMiddleware, executor)
+		submissionHandler := submissions.NewHandler(queries, authMiddleware, gradingService)
 		submissionHandler.RegisterRoutes(api, authMiddleware)
 	}
 
@@ -134,8 +142,14 @@ func StartServer() error {
 	examHandler.RegisterRoutes(api, authMiddleware)
 	examHandler.RegisterWebSocketRoutes(srv, authMiddleware)
 
+	// Upload routes
+	uploadHandler := uploads.NewHandler(&cfg.Server)
+	uploadHandler.RegisterRoutes(api, authMiddleware)
+
+	// Static file serving for uploads
+	srv.Static("/uploads", cfg.Server.UploadsDir)
+
 	// AI routes (only if enabled)
-	aiClient := ai.NewClient(&cfg.AI)
 	if aiClient.IsEnabled() {
 		aiHandler := aiapi.NewHandler(aiClient)
 		aiHandler.RegisterRoutes(api, authMiddleware)

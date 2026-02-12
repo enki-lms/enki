@@ -30,7 +30,7 @@ CREATE TABLE user_courses (
     UNIQUE (user_id, course_id)
 );
 
-CREATE TYPE comp_sci_problem_type AS ENUM ('exam', 'practice');
+CREATE TYPE comp_sci_problem_type AS ENUM ('exam', 'practice', 'turtle');
 
 CREATE TABLE comp_sci_problem_group (
     id BIGSERIAL PRIMARY KEY,
@@ -47,6 +47,7 @@ CREATE TABLE comp_sci_problems (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     group_id BIGINT NOT NULL REFERENCES comp_sci_problem_group (id) ON DELETE CASCADE,
+    type comp_sci_problem_type NOT NULL DEFAULT 'practice',
     name text NOT NULL,
     description text NOT NULL,
     problem_text text NOT NULL,
@@ -61,7 +62,9 @@ CREATE TABLE comp_sci_test_cases (
     problem_id BIGINT NOT NULL REFERENCES comp_sci_problems (id) ON DELETE CASCADE,
     input text NOT NULL,
     output text NOT NULL,
-    correct_points INT NOT NULL
+    correct_points INT NOT NULL,
+    -- For turtle problems: URL to the ideal image
+    image_url text
 );
 
 CREATE TABLE comp_sci_submissions (
@@ -184,4 +187,17 @@ CREATE TABLE exam_work_in_progress (
         problem_id,
         problem_type
     )
+);
+-- =====================
+-- Course Materials
+-- =====================
+
+CREATE TABLE course_materials (
+    id BIGSERIAL PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    course_id BIGINT NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+    title text NOT NULL,
+    file_url text NOT NULL,
+    file_type text NOT NULL,
+    uploaded_by BIGINT REFERENCES users (id) ON DELETE SET NULL
 );

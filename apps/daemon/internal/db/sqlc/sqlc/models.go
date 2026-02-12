@@ -16,6 +16,7 @@ type CompSciProblemType string
 const (
 	CompSciProblemTypeExam     CompSciProblemType = "exam"
 	CompSciProblemTypePractice CompSciProblemType = "practice"
+	CompSciProblemTypeTurtle   CompSciProblemType = "turtle"
 )
 
 func (e *CompSciProblemType) Scan(src interface{}) error {
@@ -229,15 +230,16 @@ func (ns NullUserRole) Value() (driver.Value, error) {
 }
 
 type CompSciProblem struct {
-	ID            int64            `json:"id"`
-	CreatedAt     pgtype.Timestamp `json:"created_at"`
-	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
-	GroupID       int64            `json:"group_id"`
-	Name          string           `json:"name"`
-	Description   string           `json:"description"`
-	ProblemText   string           `json:"problem_text"`
-	TimeLimitMs   pgtype.Int4      `json:"time_limit_ms"`
-	MemoryLimitMb pgtype.Int4      `json:"memory_limit_mb"`
+	ID            int64              `json:"id"`
+	CreatedAt     pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp   `json:"updated_at"`
+	GroupID       int64              `json:"group_id"`
+	Type          CompSciProblemType `json:"type"`
+	Name          string             `json:"name"`
+	Description   string             `json:"description"`
+	ProblemText   string             `json:"problem_text"`
+	TimeLimitMs   pgtype.Int4        `json:"time_limit_ms"`
+	MemoryLimitMb pgtype.Int4        `json:"memory_limit_mb"`
 }
 
 type CompSciProblemGroup struct {
@@ -271,6 +273,7 @@ type CompSciTestCase struct {
 	Input         string           `json:"input"`
 	Output        string           `json:"output"`
 	CorrectPoints int32            `json:"correct_points"`
+	ImageUrl      pgtype.Text      `json:"image_url"`
 }
 
 type Course struct {
@@ -281,6 +284,16 @@ type Course struct {
 	Subject     string           `json:"subject"`
 	Institution string           `json:"institution"`
 	OwnerID     pgtype.Int8      `json:"owner_id"`
+}
+
+type CourseMaterial struct {
+	ID         int64            `json:"id"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
+	CourseID   int64            `json:"course_id"`
+	Title      string           `json:"title"`
+	FileUrl    string           `json:"file_url"`
+	FileType   string           `json:"file_type"`
+	UploadedBy pgtype.Int8      `json:"uploaded_by"`
 }
 
 type ExamSession struct {

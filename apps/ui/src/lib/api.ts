@@ -4,6 +4,7 @@ export interface Problem {
 	description: string;
 	problem_text: string;
 	group_id: number;
+	type: "exam" | "practice" | "turtle";
 	time_limit_ms: number | null;
 	memory_limit_mb: number | null;
 }
@@ -99,6 +100,7 @@ export interface TestCase {
 	input: string;
 	output: string;
 	correct_points: number;
+	image_url?: string;
 }
 
 export interface QuizGroup {
@@ -155,6 +157,7 @@ export interface ExamStudent {
 export interface CourseInput {
 	name: string;
 	subject: string;
+	institution: string;
 }
 
 export interface ProblemGroupInput {
@@ -175,6 +178,7 @@ export interface TestCaseInput {
 	input: string;
 	output: string;
 	correct_points: number;
+	image_url?: string;
 }
 
 export interface QuizGroupInput {
@@ -203,6 +207,26 @@ export interface ExamSessionInput {
 export interface GradeInput {
 	is_correct?: boolean;
 	score: number;
+	feedback?: string;
+}
+
+export interface SubmissionHistoryItem {
+	type: "comp_sci" | "quiz";
+	id: number;
+	created_at: string;
+	user_id: number;
+	problem_id: number;
+	score: number;
+	max_score: number;
+	// CompSci specific
+	code?: string;
+	passed_tests?: number;
+	total_tests?: number;
+	results_json?: string;
+	// Quiz specific
+	answer_text?: string;
+	selected_options?: number[];
+	is_correct?: boolean;
 	feedback?: string;
 }
 
@@ -500,7 +524,20 @@ export const api = {
 		await handleResponse<void>(response);
 	},
 
+	// ============ Student Submissions (Teacher View) ============
+	getStudentSubmissions: async (courseId: number, studentId: number): Promise<SubmissionHistoryItem[]> => {
+		const response = await fetchWithAuth(`/api/courses/${courseId}/students/${studentId}/submissions`);
+		const data = await handleResponse<SubmissionHistoryItem[] | null>(response);
+		return data || [];
+	},
+
 	// ============ Exam Sessions ============
+	getActiveExamSessions: async (): Promise<ExamSession[]> => {
+		const response = await fetchWithAuth("/api/exams/sessions/active");
+		const data = await handleResponse<ExamSession[] | null>(response);
+		return data || [];
+	},
+
 	getExamSessions: async (): Promise<ExamSession[]> => {
 		const response = await fetchWithAuth("/api/exams/sessions");
 		const data = await handleResponse<ExamSession[] | null>(response);
@@ -596,6 +633,20 @@ export const api = {
 		const response = await fetchWithAuth(url);
 		const data = await handleResponse<QuizSubmission[] | null>(response);
 		return data || [];
+	},
+
+
+	// ============ Uploads ============
+	uploadFile: async (file: File): Promise<{ url: string }> => {
+		const formData = new FormData();
+		formData.append("file", file);
+
+		const response = await fetchWithAuth("/api/uploads", {
+			method: "POST",
+			body: formData,
+			// Content-Type header is set automatically by browser with boundary for FormData
+		});
+		return handleResponse<{ url: string }>(response);
 	},
 };
 

@@ -180,23 +180,25 @@ SELECT * FROM comp_sci_problems WHERE group_id = $1 ORDER BY id;
 INSERT INTO
     comp_sci_problems (
         group_id,
+        type,
         name,
         description,
         problem_text,
         time_limit_ms,
         memory_limit_mb
     )
-VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
+VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
 
 -- name: UpdateCompSciProblem :one
 UPDATE comp_sci_problems
 SET
     group_id = $2,
-    name = $3,
-    description = $4,
-    problem_text = $5,
-    time_limit_ms = $6,
-    memory_limit_mb = $7,
+    type = $3,
+    name = $4,
+    description = $5,
+    problem_text = $6,
+    time_limit_ms = $7,
+    memory_limit_mb = $8,
     updated_at = CURRENT_TIMESTAMP
 WHERE
     id = $1 RETURNING *;
@@ -223,9 +225,10 @@ INSERT INTO
         problem_id,
         input,
         output,
-        correct_points
+        correct_points,
+        image_url
     )
-VALUES ($1, $2, $3, $4) RETURNING *;
+VALUES ($1, $2, $3, $4, $5) RETURNING *;
 
 -- name: UpdateCompSciTestCase :one
 UPDATE comp_sci_test_cases
@@ -234,6 +237,7 @@ SET
     input = $3,
     output = $4,
     correct_points = $5,
+    image_url = $6,
     updated_at = CURRENT_TIMESTAMP
 WHERE
     id = $1 RETURNING *;
@@ -659,3 +663,29 @@ SET
 
 -- name: DeleteExamWorkInProgressByStudent :exec
 DELETE FROM exam_work_in_progress WHERE session_student_id = $1;
+
+-- =====================
+-- Submissions by Course
+-- =====================
+
+-- name: ListCompSciSubmissionsByCourseAndUser :many
+SELECT css.*
+FROM
+    comp_sci_submissions css
+    JOIN comp_sci_problems csp ON css.problem_id = csp.id
+    JOIN comp_sci_problem_group cspg ON csp.group_id = cspg.id
+WHERE
+    cspg.course_id = $1
+    AND css.user_id = $2
+ORDER BY css.created_at DESC;
+
+-- name: ListQuizSubmissionsByCourseAndUser :many
+SELECT qs.*
+FROM
+    quiz_submissions qs
+    JOIN quiz_problems qp ON qs.problem_id = qp.id
+    JOIN quiz_problem_groups qpg ON qp.group_id = qpg.id
+WHERE
+    qpg.course_id = $1
+    AND qs.user_id = $2
+ORDER BY qs.created_at DESC;

@@ -41,6 +41,7 @@ type ServerConfig struct {
 	Port        int    `mapstructure:"port"`
 	Host        string `mapstructure:"host"`
 	FrontendURL string `mapstructure:"frontend_url"`
+	UploadsDir  string `mapstructure:"uploads_dir"`
 }
 
 // AuthConfig holds authentication/authorization settings
@@ -87,6 +88,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("server.port", 8080)
 	viper.SetDefault("server.host", "0.0.0.0")
 	viper.SetDefault("server.frontend_url", "http://localhost:5173")
+	viper.SetDefault("server.uploads_dir", "./uploads")
 	viper.SetDefault("database.host", "localhost")
 	viper.SetDefault("database.port", 5432)
 	viper.SetDefault("database.user", "enki_user")

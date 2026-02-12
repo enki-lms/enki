@@ -43,6 +43,23 @@
       model?.dispose();
     };
   });
+
+  $effect(() => {
+    if (editor && code !== undefined && code !== editor.getValue()) {
+      const position = editor.getPosition();
+      editor.setValue(code);
+      if (position) editor.setPosition(position);
+    }
+  });
+
+  $effect(() => {
+    if (editor && language) {
+      const model = editor.getModel();
+      if (model) {
+        monaco.editor.setModelLanguage(model, language);
+      }
+    }
+  });
 </script>
 
 <div class="flex flex-col w-full h-full">

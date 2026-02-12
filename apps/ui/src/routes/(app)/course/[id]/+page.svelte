@@ -10,7 +10,10 @@
     type Course,
     type ProblemGroup,
     type QuizGroup,
+    type Enrollment,
   } from "$lib/api";
+  import Tabs from "$lib/components/Tabs.svelte";
+  import StudentCard from "$lib/components/StudentCard.svelte";
 
   export let data;
 
@@ -19,21 +22,26 @@
   let course: Course | null = null;
   let problemGroups: ProblemGroup[] = [];
   let quizGroups: QuizGroup[] = [];
+  let enrollments: Enrollment[] = [];
   let loading = true;
   let error: string | null = null;
 
+  let activeTab = "Course Content";
+  const tabs = ["Course Content", "Students"];
+
   onMount(async () => {
     try {
-      const [courseData, problemGroupsData, quizGroupsData] = await Promise.all(
-        [
+      const [courseData, problemGroupsData, quizGroupsData, enrollmentsData] =
+        await Promise.all([
           api.getCourse(courseId),
           api.getCourseProblemGroups(courseId),
           api.getCourseQuizGroups(courseId),
-        ],
-      );
+          api.getCourseEnrollments(courseId),
+        ]);
       course = courseData;
       problemGroups = problemGroupsData;
       quizGroups = quizGroupsData;
+      enrollments = enrollmentsData;
     } catch (e) {
       console.error("Error loading course data:", e);
       error = e instanceof Error ? e.message : "Failed to load course";
@@ -48,6 +56,10 @@
 
   function navigateToQuizGroup(groupId: number) {
     goto(`/quiz-group/${groupId}`);
+  }
+
+  function navigateToStudentSubmissions(studentId: number) {
+    goto(`/course/${courseId}/students/${studentId}/submissions`);
   }
 </script>
 
@@ -107,7 +119,7 @@
         <div
           class="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 mb-6"
         >
-          <div class="flex items-start gap-4">
+          <div class="flex items-start gap-4 mb-6">
             <div
               class="w-16 h-16 rounded-xl bg-gradient-to-br from-sky-400 to-emerald-400 flex items-center justify-center flex-shrink-0"
             >
@@ -132,179 +144,230 @@
               <p class="mt-1 text-gray-500">{course.subject}</p>
             </div>
           </div>
+
+          <Tabs {tabs} bind:active={activeTab} />
         </div>
 
-        <!-- Problem Groups Section -->
-        {#if problemGroups.length > 0}
-          <div class="mb-6">
-            <h2
-              class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2"
-            >
-              <svg
-                class="w-5 h-5 text-sky-500"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+        {#if activeTab === "Course Content"}
+          <!-- Problem Groups Section -->
+          {#if problemGroups.length > 0}
+            <div class="mb-6">
+              <h2
+                class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-                />
-              </svg>
-              Programming Exercises
-            </h2>
-            <div
-              class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-100"
-            >
-              {#each problemGroups as group, index}
-                <button
-                  class="w-full p-5 text-left hover:bg-sky-50 transition-colors flex items-center justify-between group"
-                  style="animation: slideIn 0.3s ease-out {index *
-                    0.05}s backwards"
-                  on:click={() => navigateToProblemGroup(group.id)}
+                <svg
+                  class="w-5 h-5 text-sky-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  <div class="flex items-center gap-4">
-                    <div
-                      class="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center text-sky-600 font-semibold"
-                    >
-                      {index + 1}
-                    </div>
-                    <div>
-                      <h3 class="font-semibold text-gray-900">{group.name}</h3>
-                      {#if group.description}
-                        <p class="text-sm text-gray-500 line-clamp-1">
-                          {group.description}
-                        </p>
-                      {/if}
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span
-                      class="text-xs px-2 py-1 rounded-full bg-sky-100 text-sky-700 capitalize"
-                    >
-                      {group.type}
-                    </span>
-                    <svg
-                      class="w-5 h-5 text-gray-400 group-hover:text-sky-500 group-hover:translate-x-1 transition-all"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </div>
-                </button>
-              {/each}
-            </div>
-          </div>
-        {/if}
-
-        <!-- Quiz Groups Section -->
-        {#if quizGroups.length > 0}
-          <div class="mb-6">
-            <h2
-              class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2"
-            >
-              <svg
-                class="w-5 h-5 text-emerald-500"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                  />
+                </svg>
+                Programming Exercises
+              </h2>
+              <div
+                class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-100"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                />
-              </svg>
-              Quizzes
-            </h2>
-            <div
-              class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-100"
-            >
-              {#each quizGroups as group, index}
-                <button
-                  class="w-full p-5 text-left hover:bg-emerald-50 transition-colors flex items-center justify-between group"
-                  style="animation: slideIn 0.3s ease-out {index *
-                    0.05}s backwards"
-                  on:click={() => navigateToQuizGroup(group.id)}
+                {#each problemGroups as group, index}
+                  <button
+                    class="w-full p-5 text-left hover:bg-sky-50 transition-colors flex items-center justify-between group"
+                    style="animation: slideIn 0.3s ease-out {index *
+                      0.05}s backwards"
+                    on:click={() => navigateToProblemGroup(group.id)}
+                  >
+                    <div class="flex items-center gap-4">
+                      <div
+                        class="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center text-sky-600 font-semibold"
+                      >
+                        {index + 1}
+                      </div>
+                      <div>
+                        <h3 class="font-semibold text-gray-900">
+                          {group.name}
+                        </h3>
+                        {#if group.description}
+                          <p class="text-sm text-gray-500 line-clamp-1">
+                            {group.description}
+                          </p>
+                        {/if}
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="text-xs px-2 py-1 rounded-full bg-sky-100 text-sky-700 capitalize"
+                      >
+                        {group.type}
+                      </span>
+                      <svg
+                        class="w-5 h-5 text-gray-400 group-hover:text-sky-500 group-hover:translate-x-1 transition-all"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </div>
+                  </button>
+                {/each}
+              </div>
+            </div>
+          {/if}
+
+          <!-- Quiz Groups Section -->
+          {#if quizGroups.length > 0}
+            <div class="mb-6">
+              <h2
+                class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2"
+              >
+                <svg
+                  class="w-5 h-5 text-emerald-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  <div class="flex items-center gap-4">
-                    <div
-                      class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 font-semibold"
-                    >
-                      {index + 1}
-                    </div>
-                    <div>
-                      <h3 class="font-semibold text-gray-900">{group.name}</h3>
-                      {#if group.description}
-                        <p class="text-sm text-gray-500 line-clamp-1">
-                          {group.description}
-                        </p>
-                      {/if}
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span
-                      class="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 capitalize"
-                    >
-                      {group.type}
-                    </span>
-                    <svg
-                      class="w-5 h-5 text-gray-400 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </div>
-                </button>
-              {/each}
-            </div>
-          </div>
-        {/if}
-
-        <!-- Empty State -->
-        {#if problemGroups.length === 0 && quizGroups.length === 0}
-          <div
-            class="bg-white rounded-2xl p-12 shadow-sm flex flex-col items-center text-center"
-          >
-            <div
-              class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4"
-            >
-              <svg
-                class="w-8 h-8 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                  />
+                </svg>
+                Quizzes
+              </h2>
+              <div
+                class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-100"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
+                {#each quizGroups as group, index}
+                  <button
+                    class="w-full p-5 text-left hover:bg-emerald-50 transition-colors flex items-center justify-between group"
+                    style="animation: slideIn 0.3s ease-out {index *
+                      0.05}s backwards"
+                    on:click={() => navigateToQuizGroup(group.id)}
+                  >
+                    <div class="flex items-center gap-4">
+                      <div
+                        class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 font-semibold"
+                      >
+                        {index + 1}
+                      </div>
+                      <div>
+                        <h3 class="font-semibold text-gray-900">
+                          {group.name}
+                        </h3>
+                        {#if group.description}
+                          <p class="text-sm text-gray-500 line-clamp-1">
+                            {group.description}
+                          </p>
+                        {/if}
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 capitalize"
+                      >
+                        {group.type}
+                      </span>
+                      <svg
+                        class="w-5 h-5 text-gray-400 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </div>
+                  </button>
+                {/each}
+              </div>
             </div>
-            <p class="text-gray-500 text-lg">No content available yet.</p>
-            <p class="text-gray-400 text-sm mt-1">
-              Your teacher hasn't added any exercises or quizzes to this course
-              yet.
-            </p>
+          {/if}
+
+          <!-- Empty State -->
+          {#if problemGroups.length === 0 && quizGroups.length === 0}
+            <div
+              class="bg-white rounded-2xl p-12 shadow-sm flex flex-col items-center text-center"
+            >
+              <div
+                class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4"
+              >
+                <svg
+                  class="w-8 h-8 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+              </div>
+              <p class="text-gray-500 text-lg">No content available yet.</p>
+              <p class="text-gray-400 text-sm mt-1">
+                Your teacher hasn't added any exercises or quizzes to this
+                course yet.
+              </p>
+            </div>
+          {/if}
+        {:else if activeTab === "Students"}
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {#each enrollments as enrollment (enrollment.id)}
+              {#if enrollment.user}
+                <div class="relative group">
+                  <StudentCard
+                    student={{
+                      id: String(enrollment.user.id),
+                      name: enrollment.user.full_name,
+                      email: enrollment.user.email,
+                    }}
+                  />
+                  <div class="mt-3 flex justify-end">
+                    <button
+                      class="text-sm font-medium text-sky-600 hover:text-sky-700 hover:underline flex items-center gap-1"
+                      on:click={() =>
+                        navigateToStudentSubmissions(enrollment.user_id)}
+                    >
+                      View Submissions
+                      <svg
+                        class="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M13 7l5 5m0 0l-5 5m5-5H6"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              {/if}
+            {/each}
+            {#if enrollments.length === 0}
+              <div class="col-span-full py-12 text-center text-gray-500">
+                <p>No students enrolled yet.</p>
+              </div>
+            {/if}
           </div>
         {/if}
       {/if}

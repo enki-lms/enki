@@ -1,12 +1,12 @@
 <script lang="ts">
   import Tabs from "$lib/components/Tabs.svelte";
   import Card from "$lib/components/Card.svelte";
+  import Button from "$lib/components/Button.svelte";
   import LogoPlaceHolder from "$lib/components/LogoPlaceHolder.svelte";
   import ProfileMenu from "$lib/components/ProfileMenu.svelte";
   import FileManager from "$lib/components/FileManager.svelte";
   import ProblemSets from "$lib/components/ProblemSets.svelte";
   import Lectures from "$lib/components/Lectures.svelte";
-  import Exams from "$lib/components/Exams.svelte";
   import Courses from "$lib/components/Courses.svelte";
   import CourseMaterials from "$lib/components/CourseMaterials.svelte";
   import Students from "$lib/components/Students.svelte";
@@ -64,7 +64,16 @@
         {:else if activeTab === "Lectures"}
           <Lectures />
         {:else if activeTab === "Exams"}
-          <Exams />
+          <div class="text-center py-12">
+            <h3 class="text-lg font-medium text-gray-900">Exam Dashboard</h3>
+            <p class="mt-1 text-sm text-gray-500 mb-6">
+              Manage exam sessions, grading, and invigilation in the dedicated
+              dashboard.
+            </p>
+            <Button href="/admin/exams" variant="primary"
+              >Go to Exam Dashboard</Button
+            >
+          </div>
         {:else if activeTab === "Courses"}
           <Courses />
         {:else if activeTab === "Students"}

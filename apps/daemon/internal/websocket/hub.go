@@ -2,11 +2,13 @@ package websocket
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/enki/daemon/internal/db/sqlc/sqlc"
+	"github.com/enki/daemon/internal/grading"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -27,6 +29,9 @@ type Hub struct {
 	// Database queries for saving work
 	queries *sqlc.Queries
 
+	// Grading service
+	gradingService *grading.Service
+
 	// Mutex for sessions map
 	mu sync.RWMutex
 
@@ -35,13 +40,14 @@ type Hub struct {
 }
 
 // NewHub creates a new Hub
-func NewHub(queries *sqlc.Queries) *Hub {
+func NewHub(queries *sqlc.Queries, gradingService *grading.Service) *Hub {
 	h := &Hub{
-		sessions:   make(map[int64]map[int64]*Client),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		queries:    queries,
-		handlers:   make(map[string]MessageHandler),
+		sessions:       make(map[int64]map[int64]*Client),
+		register:       make(chan *Client),
+		unregister:     make(chan *Client),
+		queries:        queries,
+		gradingService: gradingService,
+		handlers:       make(map[string]MessageHandler),
 	}
 
 	// Register default handlers
@@ -192,8 +198,109 @@ func (h *Hub) handleSaveWork(client *Client, msg *Message) {
 func (h *Hub) handleSubmit(client *Client, msg *Message) {
 	ctx := context.Background()
 
+	// Get Session
+	session, err := h.queries.GetExamSession(ctx, client.SessionID)
+	if err != nil {
+		log.Printf("Failed to get session for user %d: %v", client.UserID, err)
+		client.SendError("submit_failed", "Failed to get session")
+		return
+	}
+
+	// Get Work in Progress
+	work, err := h.queries.ListExamWorkInProgressByStudent(ctx, client.SessionStudentID)
+	if err != nil {
+		log.Printf("Failed to get work for user %d: %v", client.UserID, err)
+		// Continue to submit anyway? Maybe they did nothing?
+	}
+
+	// Grade and Save Submissions
+	if session.ProblemGroupType == "comp_sci" {
+		for _, w := range work {
+			// Get test cases
+			testCases, err := h.queries.ListCompSciTestCasesByProblem(ctx, w.ProblemID)
+			if err != nil {
+				log.Printf("Failed to get test cases for problem %d: %v", w.ProblemID, err)
+				continue
+			}
+
+			// Get Problem for limits
+			problem, err := h.queries.GetCompSciProblem(ctx, w.ProblemID)
+			if err != nil {
+				log.Printf("Failed to get problem %d: %v", w.ProblemID, err)
+				continue
+			}
+
+			var timeoutMs, memoryLimitMB int
+			if problem.TimeLimitMs.Valid {
+				timeoutMs = int(problem.TimeLimitMs.Int32)
+			}
+			if problem.MemoryLimitMb.Valid {
+				memoryLimitMB = int(problem.MemoryLimitMb.Int32)
+			}
+
+			gradingResult, err := h.gradingService.GradeCompSci(ctx, w.CurrentAnswer, testCases, timeoutMs, memoryLimitMB, problem.Type)
+			if err != nil {
+				log.Printf("Failed to grade submission for student %d: %v", client.UserID, err)
+				continue
+			}
+
+			resultsJSON, _ := json.Marshal(gradingResult.Results)
+
+			_, err = h.queries.CreateCompSciSubmission(ctx, sqlc.CreateCompSciSubmissionParams{
+				UserID:      client.UserID,
+				ProblemID:   w.ProblemID,
+				Code:        w.CurrentAnswer,
+				Score:       gradingResult.Score,
+				MaxScore:    gradingResult.MaxScore,
+				PassedTests: gradingResult.PassedTests,
+				TotalTests:  gradingResult.TotalTests,
+				ResultsJson: string(resultsJSON),
+			})
+			if err != nil {
+				log.Printf("Failed to create submission: %v", err)
+			}
+		}
+	} else if session.ProblemGroupType == "quiz" {
+		// Fetch all problems
+		problems, err := h.queries.ListQuizProblemsByGroup(ctx, session.ProblemGroupID)
+		if err != nil {
+			log.Printf("Failed to list quiz problems: %v", err)
+			return
+		}
+
+		// Map answers
+		answers := make(map[int64]string)
+		for _, w := range work {
+			answers[w.ProblemID] = w.CurrentAnswer
+		}
+
+		// Grade
+		gradingResult, err := h.gradingService.GradeQuiz(ctx, answers, problems)
+		if err != nil {
+			log.Printf("Failed to grade quiz: %v", err)
+			return
+		}
+
+		// Save submissions
+		for _, res := range gradingResult.ProblemResults {
+			answerText := answers[res.ProblemID]
+			_, err := h.queries.CreateQuizSubmission(ctx, sqlc.CreateQuizSubmissionParams{
+				UserID:     client.UserID,
+				ProblemID:  res.ProblemID,
+				AnswerText: pgtype.Text{String: answerText, Valid: answerText != ""},
+				Score:      res.Score,
+				MaxScore:   res.MaxScore,
+				IsCorrect:  pgtype.Bool{Bool: res.IsCorrect, Valid: true},
+				Feedback:   pgtype.Text{String: res.Feedback, Valid: res.Feedback != ""},
+			})
+			if err != nil {
+				log.Printf("Failed to save quiz submission: %v", err)
+			}
+		}
+	}
+
 	// Mark as submitted
-	_, err := h.queries.SubmitExamSession(ctx, sqlc.SubmitExamSessionParams{
+	_, err = h.queries.SubmitExamSession(ctx, sqlc.SubmitExamSessionParams{
 		ID:            client.SessionStudentID,
 		AutoSubmitted: pgtype.Bool{Bool: false, Valid: true},
 	})
@@ -206,6 +313,13 @@ func (h *Hub) handleSubmit(client *Client, msg *Message) {
 
 	// Send session end message
 	client.SendSessionEnd("submitted")
+
+	// Clean up work in progress
+	err = h.queries.DeleteExamWorkInProgressByStudent(ctx, client.SessionStudentID)
+	if err != nil {
+		log.Printf("Failed to clean up WIP: %v", err)
+	}
+
 	h.Unregister(client)
 }
 

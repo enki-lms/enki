@@ -2,12 +2,14 @@
   export interface FieldConfig {
     name: string;
     label: string;
-    type: "text" | "textarea" | "number" | "select";
+
+    type: "text" | "textarea" | "number" | "select" | "file";
     placeholder?: string;
     required?: boolean;
     options?: { value: string; label: string }[];
     min?: number;
     max?: number;
+    accept?: string;
   }
 </script>
 
@@ -22,9 +24,9 @@
   export let isLoading = false;
 
   export let fields: FieldConfig[] = [];
-  export let initialValues: Record<string, string | number> = {};
+  export let initialValues: Record<string, any> = {};
 
-  let values: Record<string, string | number> = {};
+  let values: Record<string, any> = {};
   let prevIsOpen = false;
 
   $: if (isOpen && !prevIsOpen) {
@@ -41,7 +43,7 @@
   }
 
   const dispatch = createEventDispatcher<{
-    submit: Record<string, string | number>;
+    submit: Record<string, any>;
     cancel: void;
   }>();
 
@@ -163,6 +165,36 @@
                   {/each}
                 {/if}
               </select>
+            {:else if field.type === "file"}
+              <div class="flex items-center gap-2">
+                <input
+                  id={field.name}
+                  type="file"
+                  accept={field.accept}
+                  on:change={(e) => {
+                    const files = e.currentTarget.files;
+                    if (files && files.length > 0) {
+                      values[field.name] = files[0];
+                      values = { ...values };
+                    }
+                  }}
+                  class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-sky-400 transition-colors bg-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
+                  required={field.required && !values[field.name]}
+                  disabled={isLoading}
+                />
+                {#if values[field.name] && typeof values[field.name] === "string"}
+                  <span class="text-xs text-green-600 truncate max-w-[150px]"
+                    >{values[field.name].split("/").pop()}</span
+                  >
+                {/if}
+              </div>
+              {#if values[field.name] && typeof values[field.name] === "string" && values[field.name].startsWith("http")}
+                <img
+                  src={values[field.name]}
+                  alt="Preview"
+                  class="mt-2 h-20 w-auto object-contain border rounded"
+                />
+              {/if}
             {/if}
           </div>
         {/each}

@@ -49,6 +49,33 @@
     },
   ];
 
+  /* 
+     Dynamically generate fields based on problem type.
+     Ideally we'd use a derived store or reactive declaration for fields, 
+     but `formFields` is a const. We should make it reactive or compute it.
+  */
+  let dyanmicFields = formFields;
+  $: {
+    if (problem.type === "turtle") {
+      dyanmicFields = [
+        ...formFields.filter((f) => f.name !== "output"), // Remove output for turtle? Or keep it as empty/ignored?
+        // Turtle usually doesn't need text output match if we do image match.
+        // But schema requires `output` column NOT NULL. We can set a default.
+        // Let's keep input (turtle code snippet? no, input is stdin).
+        // For turtle, input might be empty.
+        {
+          name: "image_file",
+          label: "Ideal Image",
+          type: "file",
+          accept: "image/*",
+          required: false, // Optional on edit if already has one
+        },
+      ];
+    } else {
+      dyanmicFields = formFields;
+    }
+  }
+
   async function fetchTestCases() {
     try {
       isLoading = true;
@@ -84,18 +111,24 @@
     isDeleteDialogOpen = true;
   }
 
-  async function handleFormSubmit(
-    event: CustomEvent<Record<string, string | number>>,
-  ) {
-    const { input, output, correct_points } = event.detail;
+  async function handleFormSubmit(event: CustomEvent<Record<string, any>>) {
+    const { input, output, correct_points, image_file } = event.detail;
     isSubmitting = true;
 
     try {
       const inputData = {
-        input: String(input),
-        output: String(output),
+        input: String(input || ""),
+        output: String(output || ""), // Output can be empty for turtle
         correct_points: Number(correct_points),
       };
+
+      if (image_file && image_file instanceof File) {
+        const uploadRes = await api.uploadFile(image_file);
+        inputData.image_url = uploadRes.url;
+      } else if (editingTestCase?.image_url) {
+        // Keep existing image if not replacing
+        inputData.image_url = editingTestCase.image_url;
+      }
 
       if (editingTestCase) {
         const updated = await api.updateTestCase(editingTestCase.id, inputData);
@@ -223,6 +256,18 @@
                 <pre
                   class="text-sm bg-gray-50 p-2 rounded overflow-x-auto max-h-24">{tc.output}</pre>
               </div>
+              {#if tc.image_url}
+                <div class="col-span-2">
+                  <label class="block text-xs font-medium text-gray-500 mb-1"
+                    >Ideal Image</label
+                  >
+                  <img
+                    src={tc.image_url}
+                    alt="Ideal Solution"
+                    class="h-32 w-auto object-contain border rounded bg-gray-50"
+                  />
+                </div>
+              {/if}
             </div>
             <div
               class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1"
@@ -277,12 +322,13 @@
   bind:isOpen={isFormModalOpen}
   title={editingTestCase ? "Edit Test Case" : "Add Test Case"}
   submitText={editingTestCase ? "Save" : "Add"}
-  fields={formFields}
+  fields={dyanmicFields}
   initialValues={editingTestCase
     ? {
         input: editingTestCase.input,
         output: editingTestCase.output,
         correct_points: editingTestCase.correct_points,
+        image_file: editingTestCase.image_url, // Pass existing URL for preview
       }
     : { correct_points: 10 }}
   isLoading={isSubmitting}

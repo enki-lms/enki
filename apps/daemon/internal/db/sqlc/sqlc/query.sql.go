@@ -15,27 +15,30 @@ const createCompSciProblem = `-- name: CreateCompSciProblem :one
 INSERT INTO
     comp_sci_problems (
         group_id,
+        type,
         name,
         description,
         problem_text,
         time_limit_ms,
         memory_limit_mb
     )
-VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at, updated_at, group_id, name, description, problem_text, time_limit_ms, memory_limit_mb
+VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, created_at, updated_at, group_id, type, name, description, problem_text, time_limit_ms, memory_limit_mb
 `
 
 type CreateCompSciProblemParams struct {
-	GroupID       int64       `json:"group_id"`
-	Name          string      `json:"name"`
-	Description   string      `json:"description"`
-	ProblemText   string      `json:"problem_text"`
-	TimeLimitMs   pgtype.Int4 `json:"time_limit_ms"`
-	MemoryLimitMb pgtype.Int4 `json:"memory_limit_mb"`
+	GroupID       int64              `json:"group_id"`
+	Type          CompSciProblemType `json:"type"`
+	Name          string             `json:"name"`
+	Description   string             `json:"description"`
+	ProblemText   string             `json:"problem_text"`
+	TimeLimitMs   pgtype.Int4        `json:"time_limit_ms"`
+	MemoryLimitMb pgtype.Int4        `json:"memory_limit_mb"`
 }
 
 func (q *Queries) CreateCompSciProblem(ctx context.Context, arg CreateCompSciProblemParams) (CompSciProblem, error) {
 	row := q.db.QueryRow(ctx, createCompSciProblem,
 		arg.GroupID,
+		arg.Type,
 		arg.Name,
 		arg.Description,
 		arg.ProblemText,
@@ -48,6 +51,7 @@ func (q *Queries) CreateCompSciProblem(ctx context.Context, arg CreateCompSciPro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.GroupID,
+		&i.Type,
 		&i.Name,
 		&i.Description,
 		&i.ProblemText,
@@ -163,16 +167,18 @@ INSERT INTO
         problem_id,
         input,
         output,
-        correct_points
+        correct_points,
+        image_url
     )
-VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at, problem_id, input, output, correct_points
+VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at, updated_at, problem_id, input, output, correct_points, image_url
 `
 
 type CreateCompSciTestCaseParams struct {
-	ProblemID     int64  `json:"problem_id"`
-	Input         string `json:"input"`
-	Output        string `json:"output"`
-	CorrectPoints int32  `json:"correct_points"`
+	ProblemID     int64       `json:"problem_id"`
+	Input         string      `json:"input"`
+	Output        string      `json:"output"`
+	CorrectPoints int32       `json:"correct_points"`
+	ImageUrl      pgtype.Text `json:"image_url"`
 }
 
 func (q *Queries) CreateCompSciTestCase(ctx context.Context, arg CreateCompSciTestCaseParams) (CompSciTestCase, error) {
@@ -181,6 +187,7 @@ func (q *Queries) CreateCompSciTestCase(ctx context.Context, arg CreateCompSciTe
 		arg.Input,
 		arg.Output,
 		arg.CorrectPoints,
+		arg.ImageUrl,
 	)
 	var i CompSciTestCase
 	err := row.Scan(
@@ -191,6 +198,7 @@ func (q *Queries) CreateCompSciTestCase(ctx context.Context, arg CreateCompSciTe
 		&i.Input,
 		&i.Output,
 		&i.CorrectPoints,
+		&i.ImageUrl,
 	)
 	return i, err
 }
@@ -730,7 +738,7 @@ func (q *Queries) EndExamSession(ctx context.Context, id int64) (ExamSession, er
 
 const getCompSciProblem = `-- name: GetCompSciProblem :one
 
-SELECT id, created_at, updated_at, group_id, name, description, problem_text, time_limit_ms, memory_limit_mb FROM comp_sci_problems WHERE id = $1 LIMIT 1
+SELECT id, created_at, updated_at, group_id, type, name, description, problem_text, time_limit_ms, memory_limit_mb FROM comp_sci_problems WHERE id = $1 LIMIT 1
 `
 
 // =====================
@@ -744,6 +752,7 @@ func (q *Queries) GetCompSciProblem(ctx context.Context, id int64) (CompSciProbl
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.GroupID,
+		&i.Type,
 		&i.Name,
 		&i.Description,
 		&i.ProblemText,
@@ -804,7 +813,7 @@ func (q *Queries) GetCompSciSubmission(ctx context.Context, id int64) (CompSciSu
 
 const getCompSciTestCase = `-- name: GetCompSciTestCase :one
 
-SELECT id, created_at, updated_at, problem_id, input, output, correct_points FROM comp_sci_test_cases WHERE id = $1 LIMIT 1
+SELECT id, created_at, updated_at, problem_id, input, output, correct_points, image_url FROM comp_sci_test_cases WHERE id = $1 LIMIT 1
 `
 
 // =====================
@@ -821,6 +830,7 @@ func (q *Queries) GetCompSciTestCase(ctx context.Context, id int64) (CompSciTest
 		&i.Input,
 		&i.Output,
 		&i.CorrectPoints,
+		&i.ImageUrl,
 	)
 	return i, err
 }
@@ -1339,7 +1349,7 @@ func (q *Queries) ListCompSciProblemGroupsByType(ctx context.Context, type_ Comp
 }
 
 const listCompSciProblems = `-- name: ListCompSciProblems :many
-SELECT id, created_at, updated_at, group_id, name, description, problem_text, time_limit_ms, memory_limit_mb FROM comp_sci_problems ORDER BY id
+SELECT id, created_at, updated_at, group_id, type, name, description, problem_text, time_limit_ms, memory_limit_mb FROM comp_sci_problems ORDER BY id
 `
 
 func (q *Queries) ListCompSciProblems(ctx context.Context) ([]CompSciProblem, error) {
@@ -1356,6 +1366,7 @@ func (q *Queries) ListCompSciProblems(ctx context.Context) ([]CompSciProblem, er
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.GroupID,
+			&i.Type,
 			&i.Name,
 			&i.Description,
 			&i.ProblemText,
@@ -1373,7 +1384,7 @@ func (q *Queries) ListCompSciProblems(ctx context.Context) ([]CompSciProblem, er
 }
 
 const listCompSciProblemsByGroup = `-- name: ListCompSciProblemsByGroup :many
-SELECT id, created_at, updated_at, group_id, name, description, problem_text, time_limit_ms, memory_limit_mb FROM comp_sci_problems WHERE group_id = $1 ORDER BY id
+SELECT id, created_at, updated_at, group_id, type, name, description, problem_text, time_limit_ms, memory_limit_mb FROM comp_sci_problems WHERE group_id = $1 ORDER BY id
 `
 
 func (q *Queries) ListCompSciProblemsByGroup(ctx context.Context, groupID int64) ([]CompSciProblem, error) {
@@ -1390,11 +1401,64 @@ func (q *Queries) ListCompSciProblemsByGroup(ctx context.Context, groupID int64)
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.GroupID,
+			&i.Type,
 			&i.Name,
 			&i.Description,
 			&i.ProblemText,
 			&i.TimeLimitMs,
 			&i.MemoryLimitMb,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCompSciSubmissionsByCourseAndUser = `-- name: ListCompSciSubmissionsByCourseAndUser :many
+
+SELECT css.id, css.created_at, css.user_id, css.problem_id, css.code, css.score, css.max_score, css.passed_tests, css.total_tests, css.results_json
+FROM
+    comp_sci_submissions css
+    JOIN comp_sci_problems csp ON css.problem_id = csp.id
+    JOIN comp_sci_problem_group cspg ON csp.group_id = cspg.id
+WHERE
+    cspg.course_id = $1
+    AND css.user_id = $2
+ORDER BY css.created_at DESC
+`
+
+type ListCompSciSubmissionsByCourseAndUserParams struct {
+	CourseID int64 `json:"course_id"`
+	UserID   int64 `json:"user_id"`
+}
+
+// =====================
+// Submissions by Course
+// =====================
+func (q *Queries) ListCompSciSubmissionsByCourseAndUser(ctx context.Context, arg ListCompSciSubmissionsByCourseAndUserParams) ([]CompSciSubmission, error) {
+	rows, err := q.db.Query(ctx, listCompSciSubmissionsByCourseAndUser, arg.CourseID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CompSciSubmission
+	for rows.Next() {
+		var i CompSciSubmission
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.ProblemID,
+			&i.Code,
+			&i.Score,
+			&i.MaxScore,
+			&i.PassedTests,
+			&i.TotalTests,
+			&i.ResultsJson,
 		); err != nil {
 			return nil, err
 		}
@@ -1575,7 +1639,7 @@ func (q *Queries) ListCompSciSubmissionsByUserWithLimit(ctx context.Context, arg
 }
 
 const listCompSciTestCases = `-- name: ListCompSciTestCases :many
-SELECT id, created_at, updated_at, problem_id, input, output, correct_points FROM comp_sci_test_cases ORDER BY id
+SELECT id, created_at, updated_at, problem_id, input, output, correct_points, image_url FROM comp_sci_test_cases ORDER BY id
 `
 
 func (q *Queries) ListCompSciTestCases(ctx context.Context) ([]CompSciTestCase, error) {
@@ -1595,6 +1659,7 @@ func (q *Queries) ListCompSciTestCases(ctx context.Context) ([]CompSciTestCase, 
 			&i.Input,
 			&i.Output,
 			&i.CorrectPoints,
+			&i.ImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -1607,7 +1672,7 @@ func (q *Queries) ListCompSciTestCases(ctx context.Context) ([]CompSciTestCase, 
 }
 
 const listCompSciTestCasesByProblem = `-- name: ListCompSciTestCasesByProblem :many
-SELECT id, created_at, updated_at, problem_id, input, output, correct_points FROM comp_sci_test_cases WHERE problem_id = $1 ORDER BY id
+SELECT id, created_at, updated_at, problem_id, input, output, correct_points, image_url FROM comp_sci_test_cases WHERE problem_id = $1 ORDER BY id
 `
 
 func (q *Queries) ListCompSciTestCasesByProblem(ctx context.Context, problemID int64) ([]CompSciTestCase, error) {
@@ -1627,6 +1692,7 @@ func (q *Queries) ListCompSciTestCasesByProblem(ctx context.Context, problemID i
 			&i.Input,
 			&i.Output,
 			&i.CorrectPoints,
+			&i.ImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -2162,6 +2228,54 @@ func (q *Queries) ListQuizProblemsByGroup(ctx context.Context, groupID int64) ([
 	return items, nil
 }
 
+const listQuizSubmissionsByCourseAndUser = `-- name: ListQuizSubmissionsByCourseAndUser :many
+SELECT qs.id, qs.created_at, qs.user_id, qs.problem_id, qs.answer_text, qs.selected_options, qs.is_correct, qs.score, qs.max_score, qs.feedback
+FROM
+    quiz_submissions qs
+    JOIN quiz_problems qp ON qs.problem_id = qp.id
+    JOIN quiz_problem_groups qpg ON qp.group_id = qpg.id
+WHERE
+    qpg.course_id = $1
+    AND qs.user_id = $2
+ORDER BY qs.created_at DESC
+`
+
+type ListQuizSubmissionsByCourseAndUserParams struct {
+	CourseID int64 `json:"course_id"`
+	UserID   int64 `json:"user_id"`
+}
+
+func (q *Queries) ListQuizSubmissionsByCourseAndUser(ctx context.Context, arg ListQuizSubmissionsByCourseAndUserParams) ([]QuizSubmission, error) {
+	rows, err := q.db.Query(ctx, listQuizSubmissionsByCourseAndUser, arg.CourseID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuizSubmission
+	for rows.Next() {
+		var i QuizSubmission
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.ProblemID,
+			&i.AnswerText,
+			&i.SelectedOptions,
+			&i.IsCorrect,
+			&i.Score,
+			&i.MaxScore,
+			&i.Feedback,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listQuizSubmissionsByProblem = `-- name: ListQuizSubmissionsByProblem :many
 SELECT id, created_at, user_id, problem_id, answer_text, selected_options, is_correct, score, max_score, feedback
 FROM quiz_submissions
@@ -2557,30 +2671,33 @@ const updateCompSciProblem = `-- name: UpdateCompSciProblem :one
 UPDATE comp_sci_problems
 SET
     group_id = $2,
-    name = $3,
-    description = $4,
-    problem_text = $5,
-    time_limit_ms = $6,
-    memory_limit_mb = $7,
+    type = $3,
+    name = $4,
+    description = $5,
+    problem_text = $6,
+    time_limit_ms = $7,
+    memory_limit_mb = $8,
     updated_at = CURRENT_TIMESTAMP
 WHERE
-    id = $1 RETURNING id, created_at, updated_at, group_id, name, description, problem_text, time_limit_ms, memory_limit_mb
+    id = $1 RETURNING id, created_at, updated_at, group_id, type, name, description, problem_text, time_limit_ms, memory_limit_mb
 `
 
 type UpdateCompSciProblemParams struct {
-	ID            int64       `json:"id"`
-	GroupID       int64       `json:"group_id"`
-	Name          string      `json:"name"`
-	Description   string      `json:"description"`
-	ProblemText   string      `json:"problem_text"`
-	TimeLimitMs   pgtype.Int4 `json:"time_limit_ms"`
-	MemoryLimitMb pgtype.Int4 `json:"memory_limit_mb"`
+	ID            int64              `json:"id"`
+	GroupID       int64              `json:"group_id"`
+	Type          CompSciProblemType `json:"type"`
+	Name          string             `json:"name"`
+	Description   string             `json:"description"`
+	ProblemText   string             `json:"problem_text"`
+	TimeLimitMs   pgtype.Int4        `json:"time_limit_ms"`
+	MemoryLimitMb pgtype.Int4        `json:"memory_limit_mb"`
 }
 
 func (q *Queries) UpdateCompSciProblem(ctx context.Context, arg UpdateCompSciProblemParams) (CompSciProblem, error) {
 	row := q.db.QueryRow(ctx, updateCompSciProblem,
 		arg.ID,
 		arg.GroupID,
+		arg.Type,
 		arg.Name,
 		arg.Description,
 		arg.ProblemText,
@@ -2593,6 +2710,7 @@ func (q *Queries) UpdateCompSciProblem(ctx context.Context, arg UpdateCompSciPro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.GroupID,
+		&i.Type,
 		&i.Name,
 		&i.Description,
 		&i.ProblemText,
@@ -2650,17 +2768,19 @@ SET
     input = $3,
     output = $4,
     correct_points = $5,
+    image_url = $6,
     updated_at = CURRENT_TIMESTAMP
 WHERE
-    id = $1 RETURNING id, created_at, updated_at, problem_id, input, output, correct_points
+    id = $1 RETURNING id, created_at, updated_at, problem_id, input, output, correct_points, image_url
 `
 
 type UpdateCompSciTestCaseParams struct {
-	ID            int64  `json:"id"`
-	ProblemID     int64  `json:"problem_id"`
-	Input         string `json:"input"`
-	Output        string `json:"output"`
-	CorrectPoints int32  `json:"correct_points"`
+	ID            int64       `json:"id"`
+	ProblemID     int64       `json:"problem_id"`
+	Input         string      `json:"input"`
+	Output        string      `json:"output"`
+	CorrectPoints int32       `json:"correct_points"`
+	ImageUrl      pgtype.Text `json:"image_url"`
 }
 
 func (q *Queries) UpdateCompSciTestCase(ctx context.Context, arg UpdateCompSciTestCaseParams) (CompSciTestCase, error) {
@@ -2670,6 +2790,7 @@ func (q *Queries) UpdateCompSciTestCase(ctx context.Context, arg UpdateCompSciTe
 		arg.Input,
 		arg.Output,
 		arg.CorrectPoints,
+		arg.ImageUrl,
 	)
 	var i CompSciTestCase
 	err := row.Scan(
@@ -2680,6 +2801,7 @@ func (q *Queries) UpdateCompSciTestCase(ctx context.Context, arg UpdateCompSciTe
 		&i.Input,
 		&i.Output,
 		&i.CorrectPoints,
+		&i.ImageUrl,
 	)
 	return i, err
 }

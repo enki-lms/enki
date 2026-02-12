@@ -229,3 +229,162 @@ type SubmissionResult struct {
 	MaxScore       int32            `json:"max_score"`
 	Results        []TestCaseResult `json:"results"`
 }
+
+// ExecuteWithRunner runs Python code using a wrapper runner script
+func (e *Executor) ExecuteWithRunner(ctx context.Context, runnerScript, code, input string, timeoutMs, memoryLimitMB int) (*ExecutionResult, error) {
+	if e.cfg.Unsafe {
+		return e.executeUnsafeWithRunner(ctx, runnerScript, code, input, timeoutMs)
+	}
+	// Use defaults if not specified
+	if timeoutMs <= 0 {
+		timeoutMs = e.cfg.TimeoutMs
+	}
+	if memoryLimitMB <= 0 {
+		memoryLimitMB = e.cfg.MemoryLimitMB
+	}
+
+	// Create overlay mount for isolation
+	overlay, err := NewOverlayMount(e.cfg.TempDir, e.cfg.LowerDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create overlay mount: %w", err)
+	}
+	defer overlay.Unmount()
+
+	// Mount the overlay
+	if err := overlay.Mount(); err != nil {
+		return nil, fmt.Errorf("failed to mount overlay: %w", err)
+	}
+
+	// Write the runner script
+	runnerFile := filepath.Join(overlay.MergedDir, "runner.py")
+	if err := os.WriteFile(runnerFile, []byte(runnerScript), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write runner file: %w", err)
+	}
+
+	// Write the user code
+	codeFile := filepath.Join(overlay.MergedDir, "code.py")
+	if err := os.WriteFile(codeFile, []byte(code), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write code file: %w", err)
+	}
+
+	// Build nsjail command
+	timeout := time.Duration(timeoutMs) * time.Millisecond
+	args := []string{
+		"--mode", "o",
+		"--time_limit", fmt.Sprintf("%d", (timeoutMs+999)/1000),
+		"--rlimit_as", fmt.Sprintf("%d", memoryLimitMB),
+		"--rlimit_fsize", "10",
+		"--rlimit_nofile", "32",
+		"--rlimit_nproc", "5", // Increased nproc for threads/subprocesses if needed
+		"--chroot", overlay.MergedDir,
+		"--user", "nobody",
+		"--group", "nogroup",
+		"--disable_proc",
+		"--quiet",
+		"--", e.cfg.PythonPath, "/runner.py", "/code.py",
+	}
+
+	// Create context with timeout
+	execCtx, cancel := context.WithTimeout(ctx, timeout+500*time.Millisecond)
+	defer cancel()
+
+	cmd := exec.CommandContext(execCtx, e.cfg.NSJailPath, args...)
+
+	// Set up stdin
+	cmd.Stdin = bytes.NewBufferString(input)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	// Execute
+	startTime := time.Now()
+	err = cmd.Run()
+	elapsed := time.Since(startTime)
+
+	result := &ExecutionResult{
+		Output:    stdout.String(),
+		Stderr:    stderr.String(),
+		TimeTaken: elapsed,
+		ExitCode:  0,
+	}
+
+	if err != nil {
+		if execCtx.Err() == context.DeadlineExceeded {
+			result.TimedOut = true
+			result.Error = "execution timed out"
+			result.ExitCode = -1
+		} else if exitErr, ok := err.(*exec.ExitError); ok {
+			result.ExitCode = exitErr.ExitCode()
+		} else {
+			result.Error = err.Error()
+			result.ExitCode = -1
+		}
+	}
+
+	return result, nil
+}
+
+func (e *Executor) executeUnsafeWithRunner(ctx context.Context, runnerScript, code, input string, timeoutMs int) (*ExecutionResult, error) {
+	if timeoutMs <= 0 {
+		timeoutMs = e.cfg.TimeoutMs
+	}
+
+	// Create temp dir
+	tmpDir, err := os.MkdirTemp("", "unsafe-eval-*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Write runner
+	runnerPath := filepath.Join(tmpDir, "runner.py")
+	if err := os.WriteFile(runnerPath, []byte(runnerScript), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write runner: %w", err)
+	}
+
+	// Write code
+	codePath := filepath.Join(tmpDir, "code.py")
+	if err := os.WriteFile(codePath, []byte(code), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write code: %w", err)
+	}
+
+	// Create context
+	timeout := time.Duration(timeoutMs) * time.Millisecond
+	execCtx, cancel := context.WithTimeout(ctx, timeout+500*time.Millisecond)
+	defer cancel()
+
+	// Run python
+	cmd := exec.CommandContext(execCtx, "python3", runnerPath, codePath)
+	cmd.Stdin = bytes.NewBufferString(input)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	startTime := time.Now()
+	err = cmd.Run()
+	elapsed := time.Since(startTime)
+
+	result := &ExecutionResult{
+		Output:    stdout.String(),
+		Stderr:    stderr.String(),
+		TimeTaken: elapsed,
+		ExitCode:  0,
+	}
+
+	if err != nil {
+		if execCtx.Err() == context.DeadlineExceeded {
+			result.TimedOut = true
+			result.Error = "execution timed out"
+			result.ExitCode = -1
+		} else if exitErr, ok := err.(*exec.ExitError); ok {
+			result.ExitCode = exitErr.ExitCode()
+		} else {
+			result.Error = err.Error()
+			result.ExitCode = -1
+		}
+	}
+
+	return result, nil
+}

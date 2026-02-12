@@ -6,10 +6,10 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/enki/daemon/internal/auth"
 	"github.com/enki/daemon/internal/db/sqlc/sqlc"
+	"github.com/enki/daemon/internal/grading"
 	"github.com/enki/daemon/internal/problem_eval"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -18,17 +18,17 @@ import (
 
 // Handler handles submission-related API routes
 type Handler struct {
-	queries    *sqlc.Queries
-	middleware *auth.Middleware
-	executor   *problem_eval.Executor
+	queries        *sqlc.Queries
+	middleware     *auth.Middleware
+	gradingService *grading.Service
 }
 
 // NewHandler creates a new submission handler
-func NewHandler(queries *sqlc.Queries, middleware *auth.Middleware, executor *problem_eval.Executor) *Handler {
+func NewHandler(queries *sqlc.Queries, middleware *auth.Middleware, gradingService *grading.Service) *Handler {
 	return &Handler{
-		queries:    queries,
-		middleware: middleware,
-		executor:   executor,
+		queries:        queries,
+		middleware:     middleware,
+		gradingService: gradingService,
 	}
 }
 
@@ -102,51 +102,15 @@ func (h *Handler) SubmitCode(c *gin.Context) {
 		memoryLimitMB = int(problem.MemoryLimitMb.Int32)
 	}
 
-	// Run code against each test case
-	results := make([]problem_eval.TestCaseResult, 0, len(testCases))
-	var passed, score, maxScore int32
-
-	for _, tc := range testCases {
-		maxScore += tc.CorrectPoints
-
-		execResult, err := h.executor.ExecuteCode(c.Request.Context(), req.Code, tc.Input, timeoutMs, memoryLimitMB)
-		if err != nil {
-			results = append(results, problem_eval.TestCaseResult{
-				TestCaseID: tc.ID,
-				Passed:     false,
-				Points:     0,
-				Error:      err.Error(),
-			})
-			continue
-		}
-
-		// Compare output (trim whitespace)
-		actualOutput := strings.TrimSpace(execResult.Output)
-		expectedOutput := strings.TrimSpace(tc.Output)
-
-		tcResult := problem_eval.TestCaseResult{
-			TestCaseID: tc.ID,
-			Passed:     actualOutput == expectedOutput && !execResult.TimedOut && execResult.ExitCode == 0,
-			Expected:   expectedOutput,
-			Actual:     actualOutput,
-			TimedOut:   execResult.TimedOut,
-		}
-
-		if execResult.Error != "" {
-			tcResult.Error = execResult.Error
-		}
-
-		if tcResult.Passed {
-			tcResult.Points = tc.CorrectPoints
-			score += tc.CorrectPoints
-			passed++
-		}
-
-		results = append(results, tcResult)
+	// Run code against each test case using grading service
+	gradingResult, err := h.gradingService.GradeCompSci(c.Request.Context(), req.Code, testCases, timeoutMs, memoryLimitMB, problem.Type)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to grade submission"})
+		return
 	}
 
 	// Serialize results to JSON for storage
-	resultsJSON, err := json.Marshal(results)
+	resultsJSON, err := json.Marshal(gradingResult.Results)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to serialize results"})
 		return
@@ -157,10 +121,10 @@ func (h *Handler) SubmitCode(c *gin.Context) {
 		UserID:      claims.UserID,
 		ProblemID:   problemID,
 		Code:        req.Code,
-		Score:       score,
-		MaxScore:    maxScore,
-		PassedTests: passed,
-		TotalTests:  int32(len(testCases)),
+		Score:       gradingResult.Score,
+		MaxScore:    gradingResult.MaxScore,
+		PassedTests: gradingResult.PassedTests,
+		TotalTests:  gradingResult.TotalTests,
 		ResultsJson: string(resultsJSON),
 	})
 	if err != nil {
@@ -170,12 +134,12 @@ func (h *Handler) SubmitCode(c *gin.Context) {
 
 	response := problem_eval.SubmissionResult{
 		ProblemID:      problemID,
-		TotalTestCases: len(testCases),
-		Passed:         int(passed),
-		Failed:         len(testCases) - int(passed),
-		Score:          score,
-		MaxScore:       maxScore,
-		Results:        results,
+		TotalTestCases: int(gradingResult.TotalTests),
+		Passed:         int(gradingResult.PassedTests),
+		Failed:         int(gradingResult.TotalTests - gradingResult.PassedTests),
+		Score:          gradingResult.Score,
+		MaxScore:       gradingResult.MaxScore,
+		Results:        gradingResult.Results,
 	}
 
 	c.JSON(http.StatusOK, gin.H{

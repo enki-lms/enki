@@ -3,6 +3,7 @@ package courses
 import (
 	"errors"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/enki/daemon/internal/auth"
@@ -230,6 +231,146 @@ func (h *Handler) DeleteCourse(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "course deleted"})
 }
 
+// ListStudentSubmissions returns submission history for a specific student in a course
+// GET /api/courses/:id/students/:studentId/submissions
+func (h *Handler) ListStudentSubmissions(c *gin.Context) {
+	claims, ok := auth.GetUserClaims(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	courseID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid course id"})
+		return
+	}
+
+	studentID, err := strconv.ParseInt(c.Param("studentId"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid student id"})
+		return
+	}
+
+	// 1. Verify access: User must be teacher of the course (or admin)
+	course, err := h.queries.GetCourse(c.Request.Context(), courseID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "course not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get course"})
+		return
+	}
+
+	// Only allow the owner of the course or an admin to view student submissions
+	isOwner := course.OwnerID.Valid && course.OwnerID.Int64 == claims.UserID
+	isAdmin := claims.Role == "admin"
+
+	if !isOwner && !isAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	// 2. Fetch CompSci submissions
+	compSciSubmissions, err := h.queries.ListCompSciSubmissionsByCourseAndUser(c.Request.Context(), sqlc.ListCompSciSubmissionsByCourseAndUserParams{
+		CourseID: courseID,
+		UserID:   studentID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch computer science submissions"})
+		return
+	}
+
+	// 3. Fetch Quiz submissions
+	quizSubmissions, err := h.queries.ListQuizSubmissionsByCourseAndUser(c.Request.Context(), sqlc.ListQuizSubmissionsByCourseAndUserParams{
+		CourseID: courseID,
+		UserID:   studentID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch quiz submissions"})
+		return
+	}
+
+	// 4. Combine and sort
+	type SubmissionHistoryItem struct {
+		Type      string           `json:"type"` // "comp_sci" or "quiz"
+		ID        int64            `json:"id"`
+		CreatedAt pgtype.Timestamp `json:"created_at"`
+		UserID    int64            `json:"user_id"`
+		ProblemID int64            `json:"problem_id"`
+		Score     int32            `json:"score"`
+		MaxScore  int32            `json:"max_score"`
+		// CompSci specific
+		Code        string `json:"code,omitempty"`
+		PassedTests int32  `json:"passed_tests,omitempty"`
+		TotalTests  int32  `json:"total_tests,omitempty"`
+		ResultsJson string `json:"results_json,omitempty"`
+		// Quiz specific
+		AnswerText      string  `json:"answer_text,omitempty"`
+		SelectedOptions []int64 `json:"selected_options,omitempty"`
+		IsCorrect       *bool   `json:"is_correct,omitempty"` // Pointer to handle null/false distinction if needed
+		Feedback        string  `json:"feedback,omitempty"`
+	}
+
+	var history []SubmissionHistoryItem
+
+	for _, s := range compSciSubmissions {
+		history = append(history, SubmissionHistoryItem{
+			Type:        "comp_sci",
+			ID:          s.ID,
+			CreatedAt:   s.CreatedAt,
+			UserID:      s.UserID,
+			ProblemID:   s.ProblemID,
+			Score:       s.Score,
+			MaxScore:    s.MaxScore,
+			Code:        s.Code,
+			PassedTests: s.PassedTests,
+			TotalTests:  s.TotalTests,
+			ResultsJson: s.ResultsJson,
+		})
+	}
+
+	for _, s := range quizSubmissions {
+		var isCorrect *bool
+		if s.IsCorrect.Valid {
+			val := s.IsCorrect.Bool
+			isCorrect = &val
+		}
+
+		var answerText string
+		if s.AnswerText.Valid {
+			answerText = s.AnswerText.String
+		}
+
+		var feedback string
+		if s.Feedback.Valid {
+			feedback = s.Feedback.String
+		}
+
+		history = append(history, SubmissionHistoryItem{
+			Type:            "quiz",
+			ID:              s.ID,
+			CreatedAt:       s.CreatedAt,
+			UserID:          s.UserID,
+			ProblemID:       s.ProblemID,
+			Score:           s.Score,
+			MaxScore:        s.MaxScore,
+			AnswerText:      answerText,
+			SelectedOptions: s.SelectedOptions,
+			IsCorrect:       isCorrect,
+			Feedback:        feedback,
+		})
+	}
+
+	// Sort by CreatedAt descending
+	sort.Slice(history, func(i, j int) bool {
+		return history[i].CreatedAt.Time.After(history[j].CreatedAt.Time)
+	})
+
+	c.JSON(http.StatusOK, history)
+}
+
 // RegisterRoutes registers course routes
 func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, authMiddleware *auth.Middleware) {
 	courses := rg.Group("/courses")
@@ -238,6 +379,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, authMiddleware *auth.Middl
 		courses.GET("", authMiddleware.AuthRequired(), h.ListCourses)
 		courses.GET("/teaching", authMiddleware.AuthRequired(), authMiddleware.RequireTeacher(), h.ListTeacherCourses)
 		courses.GET("/:id", authMiddleware.AuthRequired(), h.GetCourse)
+		courses.GET("/:id/students/:studentId/submissions", authMiddleware.AuthRequired(), authMiddleware.RequireTeacher(), h.ListStudentSubmissions)
 
 		// Write operations - teachers only
 		courses.POST("", authMiddleware.AuthRequired(), authMiddleware.RequireTeacher(), h.CreateCourse)

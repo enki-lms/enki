@@ -2,29 +2,33 @@ package exam
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"time"
 
 	"github.com/enki/daemon/internal/db/sqlc/sqlc"
+	"github.com/enki/daemon/internal/grading"
 	"github.com/enki/daemon/internal/websocket"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // TimerService checks for expired exam sessions and auto-submits
 type TimerService struct {
-	queries  *sqlc.Queries
-	hub      *websocket.Hub
-	interval time.Duration
-	stopCh   chan struct{}
+	queries        *sqlc.Queries
+	hub            *websocket.Hub
+	gradingService *grading.Service
+	interval       time.Duration
+	stopCh         chan struct{}
 }
 
 // NewTimerService creates a new timer service
-func NewTimerService(queries *sqlc.Queries, hub *websocket.Hub) *TimerService {
+func NewTimerService(queries *sqlc.Queries, hub *websocket.Hub, gradingService *grading.Service) *TimerService {
 	return &TimerService{
-		queries:  queries,
-		hub:      hub,
-		interval: 5 * time.Second, // Check every 5 seconds
-		stopCh:   make(chan struct{}),
+		queries:        queries,
+		hub:            hub,
+		gradingService: gradingService,
+		interval:       5 * time.Second, // Check every 5 seconds
+		stopCh:         make(chan struct{}),
 	}
 }
 
@@ -88,17 +92,49 @@ func (s *TimerService) autoSubmit(ctx context.Context, student sqlc.ExamSessionS
 	// Create submissions for each problem's work in progress
 	for _, w := range work {
 		if session.ProblemGroupType == "comp_sci" {
-			// For comp_sci problems, we need to evaluate the code
-			// For now, just save as-is with 0 score (needs actual evaluation)
+			// Get test cases
+			testCases, err := s.queries.ListCompSciTestCasesByProblem(ctx, w.ProblemID)
+			if err != nil {
+				log.Printf("Failed to get test cases for problem %d: %v", w.ProblemID, err)
+				continue
+			}
+
+			// Grade the code
+			// Use reasonable defaults for limits if we can't get them easily (or fetch problem)
+			// For auto-submit, we might want to skip execution if it takes too long,
+			// but for now let's just run it with standard limits.
+			// Fetch problem to get limits?
+			problem, err := s.queries.GetCompSciProblem(ctx, w.ProblemID)
+			if err != nil {
+				log.Printf("Failed to get problem %d: %v", w.ProblemID, err)
+				continue
+			}
+
+			var timeoutMs, memoryLimitMB int
+			if problem.TimeLimitMs.Valid {
+				timeoutMs = int(problem.TimeLimitMs.Int32)
+			}
+			if problem.MemoryLimitMb.Valid {
+				memoryLimitMB = int(problem.MemoryLimitMb.Int32)
+			}
+
+			gradingResult, err := s.gradingService.GradeCompSci(ctx, w.CurrentAnswer, testCases, timeoutMs, memoryLimitMB, problem.Type)
+			if err != nil {
+				log.Printf("Failed to grade auto-submission for student %d: %v", student.ID, err)
+				continue
+			}
+
+			resultsJSON, _ := json.Marshal(gradingResult.Results)
+
 			_, err = s.queries.CreateCompSciSubmission(ctx, sqlc.CreateCompSciSubmissionParams{
 				UserID:      student.UserID,
 				ProblemID:   w.ProblemID,
 				Code:        w.CurrentAnswer,
-				Score:       0,
-				MaxScore:    0, // Will be calculated by evaluator
-				PassedTests: 0,
-				TotalTests:  0,
-				ResultsJson: `{"auto_submitted": true}`,
+				Score:       gradingResult.Score,
+				MaxScore:    gradingResult.MaxScore,
+				PassedTests: gradingResult.PassedTests,
+				TotalTests:  gradingResult.TotalTests,
+				ResultsJson: string(resultsJSON),
 			})
 			if err != nil {
 				log.Printf("Failed to create comp_sci submission for student %d, problem %d: %v",
